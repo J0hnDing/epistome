@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A personal tree-structured map of conceptual understanding.">
+    <title>Epistome</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="brand-copy">
+        <p class="eyebrow">Personal understanding map</p>
+        <h1>Epistome</h1>
+      </div>
+      <div class="summary" aria-label="Knowledge summary">
+        <div><strong id="knownCount">0</strong><span>Known</span></div>
+        <div><strong id="frontierCount">0</strong><span>Frontier</span></div>
+        <div><strong id="unassessedCount">0</strong><span>Unassessed</span></div>
+      </div>
+    </header>
+
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+    <div class="app-shell">
+      <aside class="tree-panel" aria-label="Knowledge tree">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Structure</p>
+            <h2>Knowledge</h2>
+          </div>
+          <button id="addNodeButton" class="icon-button" type="button" title="Add a concept" aria-label="Add a concept">+</button>
+        </div>
+        <nav id="tree" class="tree" aria-label="Concepts"></nav>
+        <p class="tree-hint">Select a concept to inspect it. Unknown and unassessed nodes form the edge of the tree.</p>
+        <section class="data-actions" aria-labelledby="dataActionsTitle">
+          <p id="dataActionsTitle" class="section-label">Your data</p>
+          <div>
+            <button id="exportButton" class="secondary-button" type="button">Export</button>
+            <button id="importButton" class="secondary-button" type="button">Import</button>
+          </div>
+          <p>Export a complete JSON backup. Import replaces the entire current knowledge base.</p>
+          <input id="importFileInput" type="file" accept="application/json,.json" hidden>
+        </section>
+      </aside>
+
+      <main id="main" class="content-panel" tabindex="-1">
+        <section id="welcome" class="welcome-state">
+          <div class="welcome-symbol" aria-hidden="true">K</div>
+          <p class="eyebrow">A broad map, ready to become yours</p>
+          <h2>Begin with something you understand.</h2>
+          <p>Create a broad concept beneath Subjects or Ideologies, explain its central idea in your own words, then decompose it only when doing so makes your understanding clearer.</p>
+          <button id="welcomeAddButton" class="primary-button" type="button">Add a concept</button>
+        </section>
+
+        <section id="branchView" class="detail-view" hidden>
+          <p class="eyebrow">Primary branch</p>
+          <h2 id="branchName"></h2>
+          <p id="branchDescription" class="lead"></p>
+          <div class="rule-card">
+            <span class="rule-number">01</span>
+            <p id="branchRule"></p>
+          </div>
+          <button id="branchAddButton" class="primary-button" type="button">Add a concept here</button>
+        </section>
+
+        <section id="nodeView" class="detail-view" hidden>
+          <div class="detail-header">
+            <div>
+              <p id="nodePath" class="eyebrow"></p>
+              <h2 id="nodeName"></h2>
+            </div>
+            <span id="nodeStatus" class="status-badge"></span>
+          </div>
+          <div class="understanding-block">
+            <p class="section-label">Current understanding</p>
+            <p id="nodeUnderstanding" class="understanding"></p>
+          </div>
+          <div class="detail-grid">
+            <section>
+              <div class="section-heading">
+                <h3>Connections</h3>
+                <button id="addConnectionButton" class="text-button" type="button">Add connection</button>
+              </div>
+              <div id="connections" class="connections"></div>
+            </section>
+            <section>
+              <h3>Structure</h3>
+              <dl class="metadata">
+                <div><dt>Branch</dt><dd id="nodeBranch"></dd></div>
+                <div><dt>Children</dt><dd id="nodeChildren"></dd></div>
+              </dl>
+            </section>
+          </div>
+          <div class="detail-actions">
+            <button id="addChildButton" class="primary-button" type="button">Add child</button>
+            <button id="editNodeButton" class="secondary-button" type="button">Edit</button>
+            <button id="deleteNodeButton" class="danger-button" type="button">Delete</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="nodeDialog" class="dialog">
+      <form id="nodeForm" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">Concept</p>
+            <h2 id="nodeDialogTitle">Add a concept</h2>
+          </div>
+          <button class="dialog-close" value="cancel" aria-label="Close">×</button>
+        </div>
+        <input id="editingNodeId" type="hidden">
+        <label>
+          <span>Name</span>
+          <input id="nameInput" name="name" maxlength="120" required placeholder="e.g. Classical Mechanics">
+        </label>
+        <div class="form-row">
+          <label>
+            <span>Branch</span>
+            <select id="branchInput" name="branch" required>
+              <option value="subjects">Subjects</option>
+              <option value="ideologies">Ideologies</option>
+            </select>
+          </label>
+          <label>
+            <span>Parent</span>
+            <select id="parentInput" name="parentId"></select>
+          </label>
+        </div>
+        <label>
+          <span>Knowledge status</span>
+          <select id="statusInput" name="status" required>
+            <option value="unassessed">Unassessed</option>
+            <option value="unknown">Unknown</option>
+            <option value="known">Known</option>
+          </select>
+        </label>
+        <label id="understandingField" hidden>
+          <span>Understanding <small>Explain the central idea in your own words.</small></span>
+          <textarea id="understandingInput" name="understanding" maxlength="2000" rows="6" placeholder="What is the main mechanism, purpose, relationship, or trade-off?"></textarea>
+        </label>
+        <p id="nodeFormError" class="form-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel">Cancel</button>
+          <button id="saveNodeButton" class="primary-button" value="default">Save concept</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="connectionDialog" class="dialog dialog-small">
+      <form id="connectionForm" method="dialog">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">Cross-connection</p>
+            <h2>Connect this concept</h2>
+          </div>
+          <button class="dialog-close" value="cancel" aria-label="Close">×</button>
+        </div>
+        <label>
+          <span>Related concept</span>
+          <select id="connectionTarget" required></select>
+        </label>
+        <p id="connectionFormError" class="form-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel">Cancel</button>
+          <button class="primary-button" value="default">Add connection</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
