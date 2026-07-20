@@ -1,9 +1,12 @@
-import { renderInlineDescription } from "./inline-terms.js";
+import { renderInlineDescription, renderTermList } from "./inline-terms.js";
 
 const state = {
   branches: [],
   nodes: [],
   selected: null,
+  collapsedBranches: new Set(),
+  collapsedNodes: new Set(),
+  disclosureInitialized: false,
   noticeTimer: null
 };
 
@@ -11,6 +14,7 @@ const elements = Object.fromEntries([
   "tree", "knownCount", "frontierCount", "unassessedCount", "notice", "main",
   "welcome", "branchView", "branchName", "branchDescription", "branchRule", "nodeView",
   "nodePath", "nodeName", "nodeStatus", "nodeDescriptionBlock", "nodeDescription",
+  "nodeTermsBlock", "nodeTerms",
   "nodeUnderstanding", "nodeBranch", "nodeChildren", "termPopover", "termPopoverClose",
   "termPopoverLabel", "termPopoverDefinition",
   "connections", "addNodeButton", "welcomeAddButton", "branchAddButton", "addChildButton",
@@ -18,7 +22,7 @@ const elements = Object.fromEntries([
   "nodeDialogTitle", "editingNodeId", "nameInput", "branchInput", "parentInput", "statusInput",
   "understandingField", "understandingInput", "nodeFormError", "saveNodeButton", "connectionDialog",
   "connectionForm", "connectionTarget", "connectionFormError", "exportButton", "importButton",
-  "importFileInput"
+  "importFileInput", "collapseAllButton", "expandAllButton"
 ].map((id) => [id, document.getElementById(id)]));
 
 async function api(path, options = {}) {
@@ -84,29 +88,71 @@ function labelStatus(status) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function makeTreeItem(node, depth = 0) {
+function makeDisclosureButton({ label, expanded, controls, onToggle }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "tree-toggle";
+  button.classList.toggle("expanded", expanded);
+  button.textContent = ">";
+  button.setAttribute("aria-label", `${expanded ? "Collapse" : "Expand"} ${label}`);
+  button.setAttribute("aria-expanded", String(expanded));
+  button.setAttribute("aria-controls", controls);
+  button.addEventListener("click", onToggle);
+  return button;
+}
+
+function makeTreeItem(node) {
   const item = document.createElement("li");
+  const row = document.createElement("div");
+  row.className = "tree-row";
+  const childrenId = `tree-node-${node.id}-children`;
+  const expanded = !state.collapsedNodes.has(node.id);
+
+  if (node.children.length) {
+    row.append(makeDisclosureButton({
+      label: node.name,
+      expanded,
+      controls: childrenId,
+      onToggle: () => {
+        if (expanded) state.collapsedNodes.add(node.id);
+        else state.collapsedNodes.delete(node.id);
+        renderTree();
+      }
+    }));
+  } else {
+    const spacer = document.createElement("span");
+    spacer.className = "tree-toggle-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+    row.append(spacer);
+  }
+
   const button = document.createElement("button");
   button.type = "button";
   button.className = "tree-button";
   button.classList.toggle("selected", state.selected?.type === "node" && state.selected.id === node.id);
   button.dataset.nodeId = node.id;
-
-  const caret = document.createElement("span");
-  caret.className = "tree-caret";
-  caret.textContent = node.children.length ? "▾" : "";
   const dot = document.createElement("span");
   dot.className = `tree-dot ${node.status}`;
   const name = document.createElement("span");
   name.textContent = node.name;
-  button.append(caret, dot, name);
+  button.append(dot, name);
+  if (node.children.length && !expanded) {
+    const count = document.createElement("span");
+    count.className = "tree-child-count";
+    count.textContent = String(node.children.length);
+    count.setAttribute("aria-label", `${node.children.length} hidden children`);
+    button.append(count);
+  }
   button.addEventListener("click", () => selectNode(node.id));
-  item.append(button);
+  row.append(button);
+  item.append(row);
 
   if (node.children.length) {
     const list = document.createElement("ul");
     list.className = "tree-list";
-    node.children.forEach((child) => list.append(makeTreeItem(child, depth + 1)));
+    list.id = childrenId;
+    list.hidden = !expanded;
+    node.children.forEach((child) => list.append(makeTreeItem(child)));
     item.append(list);
   }
   return item;
@@ -118,25 +164,53 @@ function renderTree() {
     const list = document.createElement("ul");
     list.className = "tree-list";
     const item = document.createElement("li");
+    const row = document.createElement("div");
+    row.className = "tree-row";
+    const childrenId = `tree-branch-${branch.id}-children`;
+    const expanded = !state.collapsedBranches.has(branch.id);
+    row.append(makeDisclosureButton({
+      label: branch.name,
+      expanded,
+      controls: childrenId,
+      onToggle: () => {
+        if (expanded) state.collapsedBranches.add(branch.id);
+        else state.collapsedBranches.delete(branch.id);
+        renderTree();
+      }
+    }));
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "tree-button branch-button";
     button.classList.toggle("selected", state.selected?.type === "branch" && state.selected.id === branch.id);
-    button.innerHTML = '<span class="tree-caret">▾</span><span class="tree-dot"></span>';
+    const dot = document.createElement("span");
+    dot.className = "tree-dot";
     const name = document.createElement("span");
     name.textContent = branch.name;
-    button.append(name);
+    button.append(dot, name);
+    if (!expanded && branch.children.length) {
+      const count = document.createElement("span");
+      count.className = "tree-child-count";
+      count.textContent = String(branch.children.length);
+      count.setAttribute("aria-label", `${branch.children.length} hidden concepts`);
+      button.append(count);
+    }
     button.addEventListener("click", () => selectBranch(branch.id));
-    item.append(button);
+    row.append(button);
+    item.append(row);
 
     if (branch.children.length) {
       const children = document.createElement("ul");
       children.className = "tree-list";
+      children.id = childrenId;
+      children.hidden = !expanded;
       branch.children.forEach((node) => children.append(makeTreeItem(node)));
       item.append(children);
     } else {
       const empty = document.createElement("p");
       empty.className = "empty-branch";
+      empty.id = childrenId;
+      empty.hidden = !expanded;
       empty.textContent = "No concepts yet";
       item.append(empty);
     }
@@ -155,6 +229,14 @@ async function refresh() {
   const [treePayload, nodesPayload] = await Promise.all([api("/api/tree"), api("/api/nodes")]);
   state.branches = treePayload.branches;
   state.nodes = nodesPayload.nodes;
+  if (!state.disclosureInitialized) {
+    for (const node of state.nodes) {
+      if (state.nodes.some((candidate) => candidate.parentId === node.id)) state.collapsedNodes.add(node.id);
+    }
+    state.disclosureInitialized = true;
+  }
+  const existingIds = new Set(state.nodes.map((node) => node.id));
+  state.collapsedNodes = new Set([...state.collapsedNodes].filter((id) => existingIds.has(id)));
   renderTree();
   updateSummary();
 }
@@ -213,6 +295,8 @@ function renderDescription(node) {
     terms: node.terms,
     onTermClick: openTermPopover
   });
+  elements.nodeTermsBlock.hidden = node.terms.length === 0;
+  renderTermList({ document, container: elements.nodeTerms, terms: node.terms });
 }
 
 function selectBranch(id) {
@@ -226,6 +310,17 @@ function selectBranch(id) {
     : "Place a concept here when it primarily expresses values, philosophical positions, interpretations of meaning, or principles for how life or society should operate.";
   showOnly(elements.branchView);
   renderTree();
+}
+
+function revealNode(id) {
+  let current = state.nodes.find((node) => node.id === id);
+  if (!current) return;
+  state.collapsedBranches.delete(current.branch);
+  while (current.parentId) {
+    state.collapsedNodes.delete(current.parentId);
+    current = state.nodes.find((node) => node.id === current.parentId);
+    if (!current) break;
+  }
 }
 
 function pathFor(node) {
@@ -244,6 +339,7 @@ async function selectNode(id) {
   try {
     const { node } = await api(`/api/nodes/${id}`);
     state.selected = { type: "node", id };
+    revealNode(id);
     elements.nodePath.textContent = pathFor(node);
     elements.nodeName.textContent = node.name;
     elements.nodeStatus.textContent = labelStatus(node.status);
@@ -266,6 +362,18 @@ async function selectNode(id) {
 }
 
 elements.termPopoverClose.addEventListener("click", () => closeTermPopover({ restoreFocus: true }));
+elements.collapseAllButton.addEventListener("click", () => {
+  state.collapsedBranches = new Set(state.branches.map((branch) => branch.id));
+  state.collapsedNodes = new Set(state.nodes
+    .filter((node) => state.nodes.some((candidate) => candidate.parentId === node.id))
+    .map((node) => node.id));
+  renderTree();
+});
+elements.expandAllButton.addEventListener("click", () => {
+  state.collapsedBranches.clear();
+  state.collapsedNodes.clear();
+  renderTree();
+});
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && activeTermButton) {
     event.preventDefault();
@@ -517,6 +625,9 @@ elements.importFileInput.addEventListener("change", async () => {
       body: JSON.stringify(snapshot)
     });
     state.selected = null;
+    state.collapsedBranches.clear();
+    state.collapsedNodes.clear();
+    state.disclosureInitialized = false;
     await refresh();
     showOnly(elements.welcome);
     showNotice(`Imported ${imported.nodes_imported} nodes and ${imported.connections_imported} connections.`);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "node:test";
-import { renderInlineDescription } from "../public/inline-terms.js";
+import { renderInlineDescription, renderTermList } from "../public/inline-terms.js";
 import { openDatabase } from "../src/database.js";
 import { AppError } from "../src/errors.js";
 import { KnowledgeBase } from "../src/knowledge-base.js";
@@ -156,5 +156,31 @@ describe("inline node terms", () => {
     assert.equal(button.attributes.get("aria-expanded"), "false");
     button.listeners.get("click")();
     assert.equal(opened.term.definition, exampleContent.terms[0].definition);
+  });
+
+  test("renders a safe, persistent definition list for every local term", () => {
+    class FakeElement {
+      constructor(tagName) { this.tagName = tagName; this.children = []; }
+      replaceChildren() { this.children = []; }
+      append(...children) { this.children.push(...children); }
+    }
+    const document = { createElement: (tagName) => new FakeElement(tagName) };
+    const container = new FakeElement("dl");
+    renderTermList({
+      document,
+      container,
+      terms: [{
+        id: "unsafe",
+        label: "<strong>Weights</strong>",
+        definition: "<img src=x onerror=alert(1)>"
+      }]
+    });
+
+    const [item] = container.children;
+    assert.equal(item.className, "term-list-item");
+    assert.equal(item.children[0].tagName, "dt");
+    assert.equal(item.children[0].textContent, "<strong>Weights</strong>");
+    assert.equal(item.children[1].tagName, "dd");
+    assert.equal(item.children[1].textContent, "<img src=x onerror=alert(1)>");
   });
 });

@@ -1,5 +1,12 @@
 # Working history
 
+## 2026-07-20 — Collapsible tree and visible term glossary
+
+- Made primary branches and parent nodes independently collapsible with accessible disclosure controls, hidden-child counts, and expand-all/collapse-all actions.
+- Collapsed parent nodes by default while automatically revealing the ancestor path of any selected concept.
+- Added a persistent, text-safe defined-terms section to node details while retaining inline definition popovers for reading terms in context.
+- Kept the desktop tree panel available while scrolling; bounded the mobile tree, allowed long concept names to wrap, and tightened the mobile layout for term definitions.
+
 ## 2026-07-20 — Structured node descriptions and inline terms
 
 - Added optional explanatory descriptions at every node status while preserving the known-only meaning of the user's understanding statement.

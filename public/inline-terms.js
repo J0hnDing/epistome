@@ -20,3 +20,20 @@ export function renderInlineDescription({ document, container, description, term
     container.append(button);
   }
 }
+
+export function renderTermList({ document, container, terms }) {
+  container.replaceChildren();
+
+  for (const term of terms) {
+    const item = document.createElement("div");
+    item.className = "term-list-item";
+
+    const label = document.createElement("dt");
+    label.textContent = term.label;
+    const definition = document.createElement("dd");
+    definition.textContent = term.definition;
+
+    item.append(label, definition);
+    container.append(item);
+  }
+}

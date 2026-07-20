@@ -34,8 +34,13 @@
           </div>
           <button id="addNodeButton" class="icon-button" type="button" title="Add a concept" aria-label="Add a concept">+</button>
         </div>
+        <div class="tree-controls" aria-label="Tree display controls">
+          <button id="collapseAllButton" class="text-button" type="button">Collapse all</button>
+          <span aria-hidden="true">/</span>
+          <button id="expandAllButton" class="text-button" type="button">Expand all</button>
+        </div>
         <nav id="tree" class="tree" aria-label="Concepts"></nav>
-        <p class="tree-hint">Select a concept to inspect it. Unknown and unassessed nodes form the edge of the tree.</p>
+        <p class="tree-hint">Use the arrows to open the tree, then select a concept to inspect it. Unknown and unassessed nodes form the edge of the tree.</p>
         <section class="data-actions" aria-labelledby="dataActionsTitle">
           <p id="dataActionsTitle" class="section-label">Your data</p>
           <div>
@@ -79,6 +84,10 @@
             <p class="section-label">Explanation</p>
             <div id="nodeDescription" class="description"></div>
           </div>
+          <section id="nodeTermsBlock" class="terms-block" aria-labelledby="nodeTermsTitle" hidden>
+            <p id="nodeTermsTitle" class="section-label">Defined terms</p>
+            <dl id="nodeTerms" class="term-list"></dl>
+          </section>
           <div class="understanding-block">
             <p class="section-label">Current understanding</p>
             <p id="nodeUnderstanding" class="understanding"></p>
