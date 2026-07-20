@@ -39,6 +39,14 @@ Known does not mean complete mastery, expert ability, agreement, perfect recall,
 
 Capture the user's concise conceptual explanation. Prefer the central mechanism, main purpose, important relationship, key trade-off, major insight, or defining assumption. Do not paste a textbook definition or substitute a formula, constant, example, or isolated fact for conceptual understanding.
 
+## Add explanatory descriptions and local terms
+
+A node may also contain a substantial explanatory `description` at any knowledge status. This is distinct from the user's `understanding`: explanatory context on an unassessed child does not claim that the user knows it.
+
+Descriptions are ordered arrays of plain-text parts and explicit `{ "type": "term", "termId": "..." }` references. Terms are concise `{ id, label, definition }` records owned by that node. Never submit HTML and never rely on the browser to detect vocabulary in plain text.
+
+Use a local term for essential vocabulary needed to understand the current node. Every term must be referenced, every reference must resolve on the same node, and IDs must be unique within that node. A concept that needs its own exploration, children, or substantial explanation should be a knowledge node instead. Avoid making one concept both a child and a term unless the user's current model genuinely needs both roles.
+
 ## Respect the expansion boundary
 
 Expansion stops at the requested node's immediate children.
@@ -46,6 +54,8 @@ Expansion stops at the requested node's immediate children.
 Add only children that are major conceptual subdivisions through which the user currently organizes the known parent. A subdivision should clarify the user's model, distinguish meaningfully different mechanisms, or expose a useful knowledge frontier.
 
 Every newly created child is unassessed and remains a leaf. To expand it, the agent must later search or read that explicit child ID, establish it as known with a fresh revision, and apply the boundary again.
+
+When a new child benefits from immediate context, submit it as an object with `name`, `description`, and a limited set of referenced essential `terms`. A name string remains valid when no explanation is useful, and terms are never mandatory.
 
 Do not add:
 
@@ -69,4 +79,4 @@ Use `children: []` or `children_to_add: []` when no useful decomposition exists.
 
 The frontier-list operation is deliberately narrower than the general tree: it is restricted to Subjects. A null parent filter means all known Subject parents. Direct children of the virtual Subjects root are not frontier nodes because that virtual root is not itself a known node.
 
-Agent mutations may update an understanding and add immediate unassessed children. They cannot delete, rename, move, merge, recategorize, or replace nodes or children. Existing matching children are reused. Each mutation is atomic.
+Agent mutations may update an understanding, structured description, and local terms and may add immediate unassessed children. They cannot delete, rename, move, merge, recategorize, or replace nodes or children. Existing matching children are reused rather than overwritten with a submitted child description. Each mutation is atomic.

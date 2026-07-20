@@ -1,5 +1,15 @@
 # Working history
 
+## 2026-07-20 — Structured node descriptions and inline terms
+
+- Added optional explanatory descriptions at every node status while preserving the known-only meaning of the user's understanding statement.
+- Added bounded node-local terms with stable local IDs, labels, concise definitions, and explicit structured references from description parts.
+- Enforced same-node reference resolution, unique IDs, referenced-only term definitions, strict part shapes, safe text storage, and no-HTML rendering contracts in the domain layer.
+- Extended agent mutations so current nodes and newly created unassessed children can atomically receive useful descriptions and essential referenced terms; legacy name-only child inputs remain valid.
+- Added database migration defaults for existing nodes and export format version 2 with backward-compatible version 1 import.
+- Rendered referenced terms as keyboard-focusable buttons with a compact definition popover, Escape-to-close behavior, focus restoration, and DOM text-only insertion.
+- Added focused persistence, validation, generated-child, migration, transfer, renderer, API-discovery, and UI-safety tests.
+
 ## 2026-07-17 — Epistome project rename
 
 - Renamed the product, browser title, package, server output, agent discovery guide, and OpenAPI identity to Epistome.

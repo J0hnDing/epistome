@@ -14,6 +14,8 @@ const SCHEMA = `
     parent_id INTEGER REFERENCES nodes(id) ON DELETE RESTRICT,
     status TEXT NOT NULL CHECK (status IN ('unassessed', 'unknown', 'known')),
     understanding TEXT,
+    description_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(description_json) AND json_type(description_json) = 'array'),
+    terms_json TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(terms_json) AND json_type(terms_json) = 'array'),
     revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -53,6 +55,12 @@ export function openDatabase(databasePath, { seed = true } = {}) {
   const nodeColumns = database.prepare("PRAGMA table_info(nodes)").all();
   if (!nodeColumns.some((column) => column.name === "revision")) {
     database.exec("ALTER TABLE nodes ADD COLUMN revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1)");
+  }
+  if (!nodeColumns.some((column) => column.name === "description_json")) {
+    database.exec("ALTER TABLE nodes ADD COLUMN description_json TEXT NOT NULL DEFAULT '[]'");
+  }
+  if (!nodeColumns.some((column) => column.name === "terms_json")) {
+    database.exec("ALTER TABLE nodes ADD COLUMN terms_json TEXT NOT NULL DEFAULT '[]'");
   }
   if (seed) seedInitialTaxonomy(database);
   return database;

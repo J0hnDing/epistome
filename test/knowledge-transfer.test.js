@@ -33,7 +33,16 @@ function known(kb, name, branch = "subjects", parentId = null) {
 describe("versioned knowledge transfer", () => {
   test("exports and atomically restores the complete persisted knowledge base", () => {
     const kb = createKnowledgeBase();
-    const child = known(kb, "Child created first");
+    const child = kb.createNode({
+      name: "Child created first",
+      branch: "subjects",
+      status: "known",
+      understanding: "Child created first is understood conceptually.",
+      ...{
+        description: [{ type: "term", termId: "local-term" }],
+        terms: [{ id: "local-term", label: "Local term", definition: "A contextual definition." }]
+      }
+    });
     const parent = known(kb, "Parent created second");
     kb.updateNode(child.id, { parentId: parent.id });
     const ideology = known(kb, "Ethics", "ideologies");
@@ -82,12 +91,19 @@ describe("versioned knowledge transfer", () => {
     known(kb, "Mathematics");
     const legacy = kb.exportKnowledgeBase();
     legacy.format = "the-modeled-knowledge-base";
+    legacy.format_version = 1;
+    for (const node of legacy.data.nodes) {
+      delete node.description;
+      delete node.terms;
+    }
 
     kb.createNode({ name: "Temporary", branch: "subjects", status: "unassessed" });
     const result = kb.importKnowledgeBase(legacy);
 
     assert.equal(result.nodes_imported, 1);
     assert.deepEqual(kb.listNodes().map((node) => node.name), ["Mathematics"]);
+    assert.deepEqual(kb.listNodes()[0].description, []);
+    assert.deepEqual(kb.listNodes()[0].terms, []);
     assert.equal(kb.exportKnowledgeBase().format, KNOWLEDGE_EXPORT_FORMAT);
   });
 

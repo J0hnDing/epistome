@@ -1,3 +1,5 @@
+import { renderInlineDescription } from "./inline-terms.js";
+
 const state = {
   branches: [],
   nodes: [],
@@ -8,7 +10,9 @@ const state = {
 const elements = Object.fromEntries([
   "tree", "knownCount", "frontierCount", "unassessedCount", "notice", "main",
   "welcome", "branchView", "branchName", "branchDescription", "branchRule", "nodeView",
-  "nodePath", "nodeName", "nodeStatus", "nodeUnderstanding", "nodeBranch", "nodeChildren",
+  "nodePath", "nodeName", "nodeStatus", "nodeDescriptionBlock", "nodeDescription",
+  "nodeUnderstanding", "nodeBranch", "nodeChildren", "termPopover", "termPopoverClose",
+  "termPopoverLabel", "termPopoverDefinition",
   "connections", "addNodeButton", "welcomeAddButton", "branchAddButton", "addChildButton",
   "editNodeButton", "deleteNodeButton", "addConnectionButton", "nodeDialog", "nodeForm",
   "nodeDialogTitle", "editingNodeId", "nameInput", "branchInput", "parentInput", "statusInput",
@@ -160,6 +164,57 @@ function showOnly(element) {
   elements.main.focus({ preventScroll: true });
 }
 
+let activeTermButton = null;
+
+function closeTermPopover({ restoreFocus = false } = {}) {
+  if (!activeTermButton) return;
+  const button = activeTermButton;
+  activeTermButton = null;
+  button.setAttribute("aria-expanded", "false");
+  elements.termPopover.hidden = true;
+  if (restoreFocus && button.isConnected) button.focus();
+}
+
+function openTermPopover(button, term) {
+  if (activeTermButton === button) {
+    closeTermPopover({ restoreFocus: true });
+    return;
+  }
+  closeTermPopover();
+  activeTermButton = button;
+  button.setAttribute("aria-expanded", "true");
+  elements.termPopoverLabel.textContent = term.label;
+  elements.termPopoverDefinition.textContent = term.definition;
+  elements.termPopover.hidden = false;
+
+  const anchor = button.getBoundingClientRect();
+  const popover = elements.termPopover.getBoundingClientRect();
+  const margin = 12;
+  const left = Math.min(
+    Math.max(margin, anchor.left),
+    Math.max(margin, window.innerWidth - popover.width - margin)
+  );
+  const below = anchor.bottom + 8;
+  const top = below + popover.height <= window.innerHeight - margin
+    ? below
+    : Math.max(margin, anchor.top - popover.height - 8);
+  elements.termPopover.style.left = `${left}px`;
+  elements.termPopover.style.top = `${top}px`;
+  elements.termPopoverClose.focus();
+}
+
+function renderDescription(node) {
+  closeTermPopover();
+  elements.nodeDescriptionBlock.hidden = node.description.length === 0;
+  renderInlineDescription({
+    document,
+    container: elements.nodeDescription,
+    description: node.description,
+    terms: node.terms,
+    onTermClick: openTermPopover
+  });
+}
+
 function selectBranch(id) {
   const branch = state.branches.find((candidate) => candidate.id === id);
   if (!branch) return;
@@ -193,6 +248,7 @@ async function selectNode(id) {
     elements.nodeName.textContent = node.name;
     elements.nodeStatus.textContent = labelStatus(node.status);
     elements.nodeStatus.className = `status-badge ${node.status}`;
+    renderDescription(node);
     elements.nodeUnderstanding.textContent = node.status === "known"
       ? node.understanding
       : node.status === "unknown"
@@ -208,6 +264,21 @@ async function selectNode(id) {
     showNotice(error.message, true);
   }
 }
+
+elements.termPopoverClose.addEventListener("click", () => closeTermPopover({ restoreFocus: true }));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && activeTermButton) {
+    event.preventDefault();
+    closeTermPopover({ restoreFocus: true });
+  }
+});
+document.addEventListener("pointerdown", (event) => {
+  if (activeTermButton
+    && !elements.termPopover.contains(event.target)
+    && !activeTermButton.contains(event.target)) {
+    closeTermPopover();
+  }
+});
 
 function renderConnections(node) {
   elements.connections.replaceChildren();

@@ -34,7 +34,7 @@ Returns the two virtual primary branches and their recursively nested nodes:
 
 ### `GET /api/nodes`
 
-Returns a flat, name-sorted list of every stored node. The browser uses it for counts and placement controls. Each node includes its current positive integer `revision`.
+Returns a flat, name-sorted list of every stored node. The browser uses it for counts and placement controls. Each node includes its current positive integer `revision`, structured `description`, and node-local `terms`.
 
 ### `GET /api/nodes/:id`
 
@@ -51,7 +51,7 @@ Returns a complete portable JSON snapshot:
 ```json
 {
   "format": "epistome",
-  "format_version": 1,
+  "format_version": 2,
   "exported_at": "2026-07-17T20:00:00.000Z",
   "data": {
     "nodes": [],
@@ -61,7 +61,7 @@ Returns a complete portable JSON snapshot:
 }
 ```
 
-Nodes retain `id`, `name`, `branch`, `parentId`, `status`, `understanding`, `revision`, `createdAt`, and `updatedAt`. Connections retain `id`, `sourceId`, `targetId`, and `createdAt`. Application metadata is represented as `key` and `value` entries. The two virtual roots are structural constants and are not exported as nodes.
+Nodes retain `id`, `name`, `branch`, `parentId`, `status`, `understanding`, `description`, `terms`, `revision`, `createdAt`, and `updatedAt`. Connections retain `id`, `sourceId`, `targetId`, and `createdAt`. Application metadata is represented as `key` and `value` entries. The two virtual roots are structural constants and are not exported as nodes.
 
 ### `POST /api/import`
 
@@ -70,7 +70,7 @@ Accepts one complete export document, up to 50 MB, and replaces all current node
 ```json
 {
   "imported": {
-    "format_version": 1,
+    "format_version": 2,
     "nodes_imported": 50,
     "connections_imported": 3
   }
@@ -79,7 +79,7 @@ Accepts one complete export document, up to 50 MB, and replaces all current node
 
 Import preserves exported identities and timestamps. The server rejects unknown formats, unsupported versions, malformed records, invalid hierarchies, and invalid connections before mutation. Replacement is atomic: a rejected or failed import does not partially clear or populate the current database.
 
-Epistome emits `format: "epistome"`. For rename compatibility, version 1 imports also accept the earlier `format: "the-modeled-knowledge-base"` identifier; subsequent exports always use the Epistome identifier.
+Epistome emits version 2 with `format: "epistome"`. Version 1 files remain importable and receive empty descriptions and term sets. For rename compatibility, version 1 imports also accept the earlier `format: "the-modeled-knowledge-base"` identifier; subsequent exports always use the Epistome identifier.
 
 ## Node writes
 
@@ -93,11 +93,25 @@ Creates a node. Example body:
   "branch": "subjects",
   "parentId": null,
   "status": "known",
-  "understanding": "A concise explanation in the user's own words."
+  "understanding": "A concise explanation in the user's own words.",
+  "description": [
+    { "type": "text", "text": "A model learns adjustable " },
+    { "type": "term", "termId": "weights" },
+    { "type": "text", "text": " from data." }
+  ],
+  "terms": [
+    {
+      "id": "weights",
+      "label": "weights",
+      "definition": "Learned numeric parameters controlling how inputs affect an output."
+    }
+  ]
 }
 ```
 
 `branch` is `subjects` or `ideologies`. `status` is `unassessed`, `unknown`, or `known`. `parentId` is null for direct placement under a primary branch. A known status requires `understanding`; other statuses store it as null.
+
+`description` is an ordered array containing `{ "type": "text", "text": "..." }` and `{ "type": "term", "termId": "..." }` parts. `terms` contains at most 20 node-local `{ id, label, definition }` records. Term IDs use lowercase letters, digits, and hyphens, are unique within the node, and must begin with a letter. Every term reference must resolve on the same node and every defined term must be referenced. Empty arrays are valid, including a plain-text description with no terms. HTML is not a supported description format.
 
 ### `PATCH /api/nodes/:id`
 

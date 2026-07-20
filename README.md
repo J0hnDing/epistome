@@ -25,6 +25,7 @@ The initial nodes are navigation and assessment starting points. None is marked 
 - Creates, edits, moves, and deletes conceptual nodes.
 - Records each node as unassessed, unknown, or known.
 - Requires a concise understanding statement for known nodes.
+- Supports substantial structured node explanations with explicit, clickable definitions for node-local technical terms.
 - Allows decomposition only beneath known nodes.
 - Prevents cycles, duplicate siblings, cross-branch parent conflicts, and invalid knowledge frontiers.
 - Adds simple undirected cross-connections without turning the tree into a graph.
@@ -70,7 +71,7 @@ npm start
 
 Use **Export** in the browser sidebar to save a complete, versioned JSON snapshot. Browsers with the native file-system picker let you select the filename and folder directly; other browsers use their standard download behavior.
 
-Use **Import** to select a previously exported JSON file. Import is a whole-database replacement: it preserves the exported node and connection IDs, revisions, timestamps, hierarchy, understandings, and application metadata while removing anything not present in the file. The file is fully validated first and the replacement is atomic, so an invalid or incompatible import leaves the current knowledge base unchanged.
+Use **Import** to select a previously exported JSON file. Import is a whole-database replacement: it preserves the exported node and connection IDs, revisions, timestamps, hierarchy, understandings, structured descriptions, local terms, and application metadata while removing anything not present in the file. The file is fully validated first and the replacement is atomic, so an invalid or incompatible import leaves the current knowledge base unchanged.
 
 ## Test and verify
 

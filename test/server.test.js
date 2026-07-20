@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { createApp } from "../src/server.js";
+import { KNOWLEDGE_EXPORT_VERSION } from "../src/knowledge-base.js";
 
 let app;
 let baseUrl;
@@ -43,12 +44,26 @@ describe("HTTP application", () => {
         name: "Computer Science",
         branch: "subjects",
         status: "known",
-        understanding: "Computer science studies computation, information, and the systems that operate on them."
+        understanding: "Computer science studies computation, information, and the systems that operate on them.",
+        description: [
+          { type: "text", text: "Programs execute " },
+          { type: "term", termId: "algorithms" },
+          { type: "text", text: "." }
+        ],
+        terms: [{
+          id: "algorithms",
+          label: "algorithms",
+          definition: "Finite procedures for carrying out computations."
+        }]
       })
     });
     assert.equal(created.response.status, 201);
+    assert.equal(created.body.node.terms[0].id, "algorithms");
 
     const id = created.body.node.id;
+    const read = await request(`/api/nodes/${id}`);
+    assert.deepEqual(read.body.node.description, created.body.node.description);
+    assert.deepEqual(read.body.node.terms, created.body.node.terms);
     const updated = await request(`/api/nodes/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ name: "Computing" })
@@ -89,7 +104,7 @@ describe("HTTP application", () => {
     const exported = await request("/api/export");
     assert.equal(exported.response.status, 200);
     assert.equal(exported.body.format, "epistome");
-    assert.equal(exported.body.format_version, 1);
+    assert.equal(exported.body.format_version, KNOWLEDGE_EXPORT_VERSION);
 
     app.knowledgeBase.createNode({ name: "Temporary", branch: "subjects", status: "unassessed" });
     const imported = await request("/api/import", {
@@ -98,7 +113,7 @@ describe("HTTP application", () => {
     });
     assert.equal(imported.response.status, 200);
     assert.deepEqual(imported.body.imported, {
-      format_version: 1,
+      format_version: KNOWLEDGE_EXPORT_VERSION,
       nodes_imported: 2,
       connections_imported: 1
     });

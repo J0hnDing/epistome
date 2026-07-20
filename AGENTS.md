@@ -21,6 +21,7 @@ This project models one person's conceptual understanding as a tree. Preserve th
 11. Agent operations are stateless: every navigation or mutation request identifies its node explicitly. Never introduce a process-wide or session-wide `current_node`.
 12. Agent mutations use optimistic revisions and must apply the node update and child creation atomically.
 13. `list_frontier_nodes` is Subjects-only. A frontier node is unknown or unassessed and has an immediate canonical parent that is known; virtual-root children do not satisfy this definition.
+14. Explanatory descriptions are structured plain text plus explicit references to concise terms owned by the same node. Terms are not knowledge nodes, children, or graph vertices; every defined term must be referenced locally.
 
 ## Architecture
 

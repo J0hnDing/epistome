@@ -7,9 +7,14 @@ export const BRANCHES = Object.freeze([
 
 export const STATUSES = Object.freeze(["unassessed", "unknown", "known"]);
 export const KNOWLEDGE_EXPORT_FORMAT = "epistome";
-export const KNOWLEDGE_EXPORT_VERSION = 1;
+export const KNOWLEDGE_EXPORT_VERSION = 2;
+const SUPPORTED_KNOWLEDGE_EXPORT_VERSIONS = Object.freeze([1, KNOWLEDGE_EXPORT_VERSION]);
 const LEGACY_KNOWLEDGE_EXPORT_FORMATS = Object.freeze(["the-modeled-knowledge-base"]);
 const FRONTIER_STATUSES = Object.freeze(["unknown", "unassessed"]);
+const TERM_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
+const MAX_DESCRIPTION_PARTS = 200;
+const MAX_DESCRIPTION_LENGTH = 20_000;
+const MAX_TERMS = 20;
 
 function now() {
   return new Date().toISOString();
@@ -65,6 +70,152 @@ function normalizeStatusAndUnderstanding(status, understanding) {
 
 function normalizeUnderstanding(understanding) {
   return normalizeStatusAndUnderstanding("known", understanding).understanding;
+}
+
+function assertExactObject(value, fields, code, message) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    throw badRequest(code, message);
+  }
+  const allowed = new Set(fields);
+  const unexpected = Object.keys(value).filter((field) => !allowed.has(field));
+  const missing = fields.filter((field) => !(field in value));
+  if (missing.length || unexpected.length) {
+    throw badRequest(code, message, { missing, unexpected });
+  }
+}
+
+function normalizeDescriptionAndTerms(description, terms) {
+  if (!Array.isArray(terms)) {
+    throw badRequest("invalid_terms", "Terms must be an array.");
+  }
+  if (terms.length > MAX_TERMS) {
+    throw badRequest("too_many_terms", `A node cannot contain more than ${MAX_TERMS} terms.`);
+  }
+
+  const normalizedTerms = [];
+  const termsById = new Map();
+  for (const candidate of terms) {
+    assertExactObject(
+      candidate,
+      ["id", "label", "definition"],
+      "invalid_term",
+      "Each term must contain exactly id, label, and definition."
+    );
+    if (typeof candidate.id !== "string" || !TERM_ID_PATTERN.test(candidate.id)) {
+      throw badRequest(
+        "invalid_term_id",
+        "Term ids must begin with a lowercase letter and contain only lowercase letters, digits, or hyphens, up to 64 characters."
+      );
+    }
+    if (termsById.has(candidate.id)) {
+      throw badRequest("duplicate_term_id", `Term id ${candidate.id} is defined more than once.`, {
+        term_id: candidate.id
+      });
+    }
+    if (typeof candidate.label !== "string") {
+      throw badRequest("invalid_term", "Term labels must be text.");
+    }
+    const label = candidate.label.trim().replace(/\s+/g, " ");
+    if (!label || label.length > 80) {
+      throw badRequest("invalid_term", "Term labels must contain between 1 and 80 characters.");
+    }
+    if (typeof candidate.definition !== "string") {
+      throw badRequest("invalid_term", "Term definitions must be text.");
+    }
+    const definition = candidate.definition.trim().replace(/\s+/g, " ");
+    if (!definition || definition.length > 500) {
+      throw badRequest("invalid_term", "Term definitions must contain between 1 and 500 characters.");
+    }
+    const term = { id: candidate.id, label, definition };
+    normalizedTerms.push(term);
+    termsById.set(term.id, term);
+  }
+
+  if (!Array.isArray(description)) {
+    throw badRequest("invalid_description", "Description must be an array of text and term-reference parts.");
+  }
+  if (description.length > MAX_DESCRIPTION_PARTS) {
+    throw badRequest(
+      "description_too_complex",
+      `Description cannot contain more than ${MAX_DESCRIPTION_PARTS} parts.`
+    );
+  }
+
+  let descriptionLength = 0;
+  let hasContent = false;
+  const referencedTermIds = new Set();
+  const normalizedDescription = description.map((part) => {
+    if (part?.type === "text") {
+      assertExactObject(
+        part,
+        ["type", "text"],
+        "malformed_term_reference",
+        "Text description parts must contain exactly type and text."
+      );
+      if (typeof part.text !== "string" || !part.text.length) {
+        throw badRequest("invalid_description", "Description text parts must contain non-empty text.");
+      }
+      const text = part.text.replace(/\r\n?/g, "\n");
+      descriptionLength += text.length;
+      hasContent ||= Boolean(text.trim());
+      return { type: "text", text };
+    }
+    if (part?.type === "term") {
+      assertExactObject(
+        part,
+        ["type", "termId"],
+        "malformed_term_reference",
+        "Term-reference parts must contain exactly type and termId."
+      );
+      if (typeof part.termId !== "string" || !TERM_ID_PATTERN.test(part.termId)) {
+        throw badRequest("malformed_term_reference", "Term references must contain a valid termId.");
+      }
+      const term = termsById.get(part.termId);
+      if (!term) {
+        throw badRequest(
+          "unresolved_term_reference",
+          `Description references term ${part.termId}, which is not defined on this node.`,
+          { term_id: part.termId }
+        );
+      }
+      referencedTermIds.add(part.termId);
+      descriptionLength += term.label.length;
+      hasContent = true;
+      return { type: "term", termId: part.termId };
+    }
+    throw badRequest(
+      "malformed_term_reference",
+      "Every description part must have type text or term and the matching fields."
+    );
+  });
+
+  if (descriptionLength > MAX_DESCRIPTION_LENGTH) {
+    throw badRequest(
+      "description_too_long",
+      `Description must be ${MAX_DESCRIPTION_LENGTH.toLocaleString("en-US")} characters or fewer.`
+    );
+  }
+  if (description.length && !hasContent) {
+    throw badRequest("invalid_description", "Description must contain meaningful text or a term reference.");
+  }
+  for (const term of normalizedTerms) {
+    if (!referencedTermIds.has(term.id)) {
+      throw badRequest(
+        "unreferenced_term",
+        `Term ${term.id} is defined but not referenced in the description.`,
+        { term_id: term.id }
+      );
+    }
+  }
+
+  return { description: normalizedDescription, terms: normalizedTerms };
+}
+
+function parseNodeContent(row) {
+  return {
+    description: JSON.parse(row.description_json),
+    terms: JSON.parse(row.terms_json)
+  };
 }
 
 function normalizeQuery(value) {
@@ -155,19 +306,39 @@ function normalizeExpectedRevision(value) {
 }
 
 function normalizeRequestedChildren(value, field) {
-  if (!Array.isArray(value)) throw badRequest("invalid_children", `${field} must be an array of names.`);
-  if (value.length > 100) throw badRequest("too_many_children", `${field} cannot contain more than 100 names.`);
+  if (!Array.isArray(value)) throw badRequest("invalid_children", `${field} must be an array of child specifications.`);
+  if (value.length > 100) throw badRequest("too_many_children", `${field} cannot contain more than 100 children.`);
 
   const unique = [];
   const conflicting = [];
   const seen = new Set();
   for (const candidate of value) {
-    const name = normalizeName(candidate);
+    let name;
+    let content;
+    if (typeof candidate === "string") {
+      name = normalizeName(candidate);
+      content = { description: [], terms: [] };
+    } else {
+      if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) {
+        throw badRequest("invalid_child", "Each child must be a name or an object with name, description, and terms.");
+      }
+      const unexpected = Object.keys(candidate)
+        .filter((candidateField) => !["name", "description", "terms"].includes(candidateField));
+      if (!("name" in candidate) || unexpected.length) {
+        throw badRequest(
+          "invalid_child",
+          "Child objects require name and may contain only description and terms.",
+          { unexpected }
+        );
+      }
+      name = normalizeName(candidate.name);
+      content = normalizeDescriptionAndTerms(candidate.description ?? [], candidate.terms ?? []);
+    }
     const key = name.toLocaleLowerCase("en-US");
     if (seen.has(key)) conflicting.push(name);
     else {
       seen.add(key);
-      unique.push({ key, name });
+      unique.push({ key, name, ...content });
     }
   }
   return { conflicting, unique };
@@ -186,6 +357,7 @@ function assertAgentInput(input, allowedFields, operation) {
 }
 
 function publicNode(row) {
+  const content = parseNodeContent(row);
   return {
     id: row.id,
     name: row.name,
@@ -193,6 +365,8 @@ function publicNode(row) {
     parentId: row.parent_id,
     status: row.status,
     understanding: row.understanding,
+    description: content.description,
+    terms: content.terms,
     revision: row.revision,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -251,11 +425,18 @@ function validateKnowledgeExport(snapshot) {
       }
     );
   }
-  if (snapshot.format_version !== KNOWLEDGE_EXPORT_VERSION) {
+  if (!SUPPORTED_KNOWLEDGE_EXPORT_VERSIONS.includes(snapshot.format_version)) {
     throw badRequest(
       "unsupported_export_version",
       `Export version ${String(snapshot.format_version)} is not supported.`,
-      { supported_versions: [KNOWLEDGE_EXPORT_VERSION], received: snapshot.format_version ?? null }
+      { supported_versions: SUPPORTED_KNOWLEDGE_EXPORT_VERSIONS, received: snapshot.format_version ?? null }
+    );
+  }
+  if (LEGACY_KNOWLEDGE_EXPORT_FORMATS.includes(snapshot.format) && snapshot.format_version !== 1) {
+    throw badRequest(
+      "invalid_export_format",
+      "The legacy export identifier is accepted only for version 1 files.",
+      { expected: KNOWLEDGE_EXPORT_FORMAT, received: snapshot.format }
     );
   }
   assertExportTimestamp(snapshot.exported_at, "export.exported_at");
@@ -268,9 +449,11 @@ function validateKnowledgeExport(snapshot) {
   const siblingKeys = new Set();
   for (const [index, node] of snapshot.data.nodes.entries()) {
     const path = `export.data.nodes[${index}]`;
-    assertExportFields(node, [
+    const nodeFields = [
       "id", "name", "branch", "parentId", "status", "understanding", "revision", "createdAt", "updatedAt"
-    ], path);
+    ];
+    if (snapshot.format_version >= 2) nodeFields.splice(6, 0, "description", "terms");
+    assertExportFields(node, nodeFields, path);
     assertExportId(node.id, `${path}.id`);
     if (nodesById.has(node.id)) invalidExport(`Node id ${node.id} appears more than once.`, `${path}.id`);
     if (typeof node.name !== "string"
@@ -296,6 +479,21 @@ function validateKnowledgeExport(snapshot) {
     } else if (node.understanding !== null) {
       invalidExport(`${path}.understanding must be null unless the node is known.`, `${path}.understanding`);
     }
+    let content = { description: [], terms: [] };
+    if (snapshot.format_version >= 2) {
+      try {
+        content = normalizeDescriptionAndTerms(node.description, node.terms);
+      } catch (error) {
+        if (error?.status === 400) {
+          invalidExport(`${path} has invalid description or terms: ${error.message}`, path);
+        }
+        throw error;
+      }
+      if (JSON.stringify(content.description) !== JSON.stringify(node.description)
+        || JSON.stringify(content.terms) !== JSON.stringify(node.terms)) {
+        invalidExport(`${path}.description and terms must already be normalized.`, path);
+      }
+    }
     assertExportId(node.revision, `${path}.revision`);
     assertExportTimestamp(node.createdAt, `${path}.createdAt`);
     assertExportTimestamp(node.updatedAt, `${path}.updatedAt`);
@@ -305,7 +503,7 @@ function validateKnowledgeExport(snapshot) {
       invalidExport(`Duplicate sibling name ${node.name}.`, `${path}.name`);
     }
     siblingKeys.add(siblingKey);
-    nodesById.set(node.id, node);
+    nodesById.set(node.id, { ...node, ...content });
   }
 
   const orderedNodes = [];
@@ -436,8 +634,9 @@ export class KnowledgeBase {
 
       const insertNode = this.database.prepare(`
         INSERT INTO nodes (
-          id, name, branch, parent_id, status, understanding, revision, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          id, name, branch, parent_id, status, understanding, description_json, terms_json,
+          revision, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       for (const node of validated.orderedNodes) {
         insertNode.run(
@@ -447,6 +646,8 @@ export class KnowledgeBase {
           node.parentId,
           node.status,
           node.understanding,
+          JSON.stringify(node.description),
+          JSON.stringify(node.terms),
           node.revision,
           node.createdAt,
           node.updatedAt
@@ -503,11 +704,17 @@ export class KnowledgeBase {
       .map((row) => {
         const nameKey = row.name.toLocaleLowerCase("en-US");
         const understandingKey = (row.understanding ?? "").toLocaleLowerCase("en-US");
+        const content = parseNodeContent(row);
+        const descriptionKey = content.description.map((part) => part.type === "text"
+          ? part.text
+          : content.terms.find((term) => term.id === part.termId)?.label ?? ""
+        ).join("").toLocaleLowerCase("en-US");
         let rank = Number.POSITIVE_INFINITY;
         if (nameKey === queryKey) rank = 0;
         else if (nameKey.startsWith(queryKey)) rank = 1;
         else if (nameKey.includes(queryKey)) rank = 2;
         else if (understandingKey.includes(queryKey)) rank = 3;
+        else if (descriptionKey.includes(queryKey)) rank = 4;
         return { rank, row };
       })
       .filter(({ rank }) => Number.isFinite(rank))
@@ -592,6 +799,7 @@ export class KnowledgeBase {
       name: row.name,
       status: row.status,
       understanding: row.understanding,
+      ...parseNodeContent(row),
       path: this.#pathForRow(row),
       parent: parent ? { id: parent.id, name: parent.name } : null,
       children
@@ -601,13 +809,15 @@ export class KnowledgeBase {
   establishKnownNode(input) {
     assertAgentInput(
       input,
-      ["node_id", "expected_revision", "understanding", "children"],
+      ["node_id", "expected_revision", "understanding", "description", "terms", "children"],
       "establish_known_node"
     );
     return this.#mutateKnownNode({
       id: requireInteger(input?.node_id, "node_id"),
       expectedRevision: normalizeExpectedRevision(input?.expected_revision),
       understanding: normalizeUnderstanding(input?.understanding),
+      description: input?.description,
+      terms: input?.terms,
       requestedChildren: normalizeRequestedChildren(input?.children, "children"),
       requireAlreadyKnown: false
     });
@@ -616,13 +826,15 @@ export class KnowledgeBase {
   updateKnownNode(input) {
     assertAgentInput(
       input,
-      ["node_id", "expected_revision", "understanding", "children_to_add"],
+      ["node_id", "expected_revision", "understanding", "description", "terms", "children_to_add"],
       "update_known_node"
     );
     return this.#mutateKnownNode({
       id: requireInteger(input?.node_id, "node_id"),
       expectedRevision: normalizeExpectedRevision(input?.expected_revision),
       understanding: normalizeUnderstanding(input?.understanding),
+      description: input?.description,
+      terms: input?.terms,
       requestedChildren: normalizeRequestedChildren(input?.children_to_add, "children_to_add"),
       requireAlreadyKnown: true
     });
@@ -658,6 +870,7 @@ export class KnowledgeBase {
     const branch = normalizeBranch(input?.branch);
     const parentId = input?.parentId == null ? null : requireInteger(input.parentId, "parentId");
     const normalized = normalizeStatusAndUnderstanding(input?.status ?? "unassessed", input?.understanding);
+    const content = normalizeDescriptionAndTerms(input?.description ?? [], input?.terms ?? []);
 
     if (parentId !== null) {
       const parent = this.getNode(parentId);
@@ -674,9 +887,21 @@ export class KnowledgeBase {
       let result;
       try {
         result = this.database.prepare(`
-          INSERT INTO nodes (name, branch, parent_id, status, understanding, revision, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, 1, ?, ?)
-        `).run(name, branch, parentId, normalized.status, normalized.understanding, timestamp, timestamp);
+          INSERT INTO nodes (
+            name, branch, parent_id, status, understanding, description_json, terms_json,
+            revision, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+        `).run(
+          name,
+          branch,
+          parentId,
+          normalized.status,
+          normalized.understanding,
+          JSON.stringify(content.description),
+          JSON.stringify(content.terms),
+          timestamp,
+          timestamp
+        );
       } catch (error) {
         sqliteConflict(error, "A node with this name already exists under that parent.");
       }
@@ -701,6 +926,10 @@ export class KnowledgeBase {
     const status = input.status === undefined ? current.status : input.status;
     const understandingInput = input.understanding === undefined ? current.understanding : input.understanding;
     const normalized = normalizeStatusAndUnderstanding(status, understandingInput);
+    const content = normalizeDescriptionAndTerms(
+      input.description === undefined ? current.description : input.description,
+      input.terms === undefined ? current.terms : input.terms
+    );
 
     if (current.childCount > 0 && normalized.status !== "known") {
       throw conflict("children_require_known_parent", "A node with children must remain known.");
@@ -726,9 +955,20 @@ export class KnowledgeBase {
         this.database.prepare(`
           UPDATE nodes
           SET name = ?, branch = ?, parent_id = ?, status = ?, understanding = ?,
+              description_json = ?, terms_json = ?,
               revision = revision + 1, updated_at = ?
           WHERE id = ?
-        `).run(name, branch, parentId, normalized.status, normalized.understanding, now(), id);
+        `).run(
+          name,
+          branch,
+          parentId,
+          normalized.status,
+          normalized.understanding,
+          JSON.stringify(content.description),
+          JSON.stringify(content.terms),
+          now(),
+          id
+        );
       } catch (error) {
         sqliteConflict(error, "A node with this name already exists under that parent.");
       }
@@ -813,7 +1053,15 @@ export class KnowledgeBase {
     return [branchName, ...ancestors];
   }
 
-  #mutateKnownNode({ id, expectedRevision, understanding, requestedChildren, requireAlreadyKnown }) {
+  #mutateKnownNode({
+    id,
+    expectedRevision,
+    understanding,
+    description,
+    terms,
+    requestedChildren,
+    requireAlreadyKnown
+  }) {
     return this.#inTransaction(() => {
       const row = this.#getNodeRow(id);
       if (row.revision !== expectedRevision) {
@@ -826,13 +1074,26 @@ export class KnowledgeBase {
       if (requireAlreadyKnown && row.status !== "known") {
         throw conflict("node_not_known", "update_known_node can only update an already known node.");
       }
+      const currentContent = parseNodeContent(row);
+      const content = normalizeDescriptionAndTerms(
+        description === undefined ? currentContent.description : description,
+        terms === undefined ? currentContent.terms : terms
+      );
 
       const timestamp = now();
       const update = this.database.prepare(`
         UPDATE nodes
-        SET status = 'known', understanding = ?, revision = revision + 1, updated_at = ?
+        SET status = 'known', understanding = ?, description_json = ?, terms_json = ?,
+            revision = revision + 1, updated_at = ?
         WHERE id = ? AND revision = ?
-      `).run(understanding, timestamp, id, expectedRevision);
+      `).run(
+        understanding,
+        JSON.stringify(content.description),
+        JSON.stringify(content.terms),
+        timestamp,
+        id,
+        expectedRevision
+      );
       if (update.changes !== 1) {
         const current = this.#getNodeRow(id);
         throw conflict("stale_revision", `Node ${id} changed before the update could be applied.`, {
@@ -863,9 +1124,18 @@ export class KnowledgeBase {
         }
         this.database.prepare(`
           INSERT INTO nodes (
-            name, branch, parent_id, status, understanding, revision, created_at, updated_at
-          ) VALUES (?, ?, ?, 'unassessed', NULL, 1, ?, ?)
-        `).run(requested.name, row.branch, id, timestamp, timestamp);
+            name, branch, parent_id, status, understanding, description_json, terms_json,
+            revision, created_at, updated_at
+          ) VALUES (?, ?, ?, 'unassessed', NULL, ?, ?, 1, ?, ?)
+        `).run(
+          requested.name,
+          row.branch,
+          id,
+          JSON.stringify(requested.description),
+          JSON.stringify(requested.terms),
+          timestamp,
+          timestamp
+        );
         childrenCreated.push(requested.name);
         existingByName.set(requested.key, { name: requested.name });
       }
@@ -875,7 +1145,9 @@ export class KnowledgeBase {
           id,
           revision: expectedRevision + 1,
           status: "known",
-          understanding
+          understanding,
+          description: content.description,
+          terms: content.terms
         },
         children_created: childrenCreated,
         children_existing: childrenExisting,

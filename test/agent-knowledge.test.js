@@ -237,7 +237,8 @@ describe("agent knowledge operations", () => {
 
     const result = kb.getKnowledgeNode({ node_id: root.id });
     assert.deepEqual(Object.keys(result), [
-      "id", "revision", "name", "status", "understanding", "path", "parent", "children"
+      "id", "revision", "name", "status", "understanding", "description", "terms",
+      "path", "parent", "children"
     ]);
     assert.equal(result.parent, null);
     assert.deepEqual(result.children, [{ id: child.id, name: "Child Concept", status: "known" }]);

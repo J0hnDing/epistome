@@ -49,6 +49,14 @@ describe("agent API discovery", () => {
     assert.match(establish.description, /children: \[\].*known leaf/i);
     assert.match(establish.input_schema.properties.children.description, /known parent/i);
     assert.match(establish.input_schema.properties.children.description, /known leaf/i);
+    assert.match(establish.description, /explicit references.*terms/i);
+    assert.equal(establish.input_schema.properties.description.maxItems, 200);
+    assert.equal(establish.input_schema.properties.terms.maxItems, 20);
+    assert.ok(establish.input_schema.properties.children.items.oneOf);
+    const update = catalog.tools.find((tool) => tool.name === "update_known_node");
+    assert.equal(update.input_schema.properties.description.maxItems, 200);
+    assert.equal(update.input_schema.properties.terms.maxItems, 20);
+    assert.ok(update.input_schema.properties.children_to_add.items.oneOf);
 
     const frontier = catalog.tools.find((tool) => tool.name === "list_frontier_nodes");
     assert.match(frontier.description, /Subjects tree only/i);
@@ -67,6 +75,9 @@ describe("agent API discovery", () => {
     assert.match(guide.structure.frontier.api_scope, /restricted to Subjects/i);
     assert.match(guide.structure.frontier.api_scope, /never returns Ideology/i);
     assert.match(guide.agent_workflow.state_model, /no global.*current_node/i);
+    assert.match(guide.inline_terms.description, /explicit references/i);
+    assert.ok(guide.inline_terms.rules.some((rule) => /never submit HTML/i.test(rule)));
+    assert.ok(guide.inline_terms.rules.some((rule) => /child knowledge node/i.test(rule)));
 
     assert.match(guide.expansion_boundary.summary, /immediate children/i);
     assert.match(guide.expansion_boundary.rule, /newly created child is unassessed/i);
@@ -110,6 +121,24 @@ describe("agent API discovery", () => {
     const childDescription = specification.components.schemas.EstablishKnownNodeInput
       .properties.children.description;
     assert.match(childDescription, /newly created child is unassessed/i);
+    assert.ok(specification.components.schemas.NodeDescription);
+    assert.ok(specification.components.schemas.NodeTerm);
+    assert.equal(
+      specification.components.schemas.KnowledgeNode.properties.terms.$ref,
+      "#/components/schemas/NodeTerms"
+    );
+    assert.equal(
+      specification.components.schemas.GeneratedChildInput.oneOf[1].properties.description.$ref,
+      "#/components/schemas/NodeDescription"
+    );
+    assert.equal(
+      specification.components.schemas.MutationNode.properties.description.$ref,
+      "#/components/schemas/NodeDescription"
+    );
+    assert.equal(
+      specification.components.schemas.MutationNode.properties.terms.$ref,
+      "#/components/schemas/NodeTerms"
+    );
 
     const frontier = specification.paths["/api/agent/list_frontier_nodes"].post;
     assert.match(frontier.description, /Subjects tree/i);

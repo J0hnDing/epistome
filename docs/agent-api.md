@@ -38,6 +38,31 @@ Stop rather than adding:
 
 Use an empty child list when no useful decomposition exists. A known node is allowed to remain a leaf.
 
+## Structured descriptions and local terms
+
+Nodes at any status may contain explanatory context separate from the user's known-only `understanding`. The description is an ordered array of safe text parts and explicit node-local term references:
+
+```json
+{
+  "description": [
+    { "type": "text", "text": "A model updates " },
+    { "type": "term", "termId": "weights" },
+    { "type": "text", "text": " during training." }
+  ],
+  "terms": [
+    {
+      "id": "weights",
+      "label": "weights",
+      "definition": "Learned numeric parameters controlling how inputs affect an output."
+    }
+  ]
+}
+```
+
+The server rejects HTML-shaped description objects, malformed reference parts, references that do not resolve on the same node, duplicate local IDs, and defined terms that are not referenced. Descriptions without terms are valid. Use a knowledge node instead of a local term when a concept needs independent exploration, children, or substantial explanation.
+
+`description` and `terms` are optional mutation fields for backward compatibility. Omit both to preserve the node's current explanatory content. If either is supplied, the server validates it together with the supplied or existing counterpart. Child name strings remain accepted; child objects add explanatory content only when that child is newly created. A matching existing child is reused unchanged.
+
 ## `list_frontier_nodes`
 
 ```http
@@ -108,7 +133,7 @@ Input:
 - `parent_id` is optional. When present, only descendants of that explicit parent are searched; the parent itself is not a result.
 - `branch` is optional. It is `subjects`, `ideologies`, or null. If both branch and parent are present, they must agree.
 - `limit` defaults to 5 and must be between 1 and 25.
-- Name matches rank ahead of understanding-text matches.
+- Name matches rank ahead of understanding- and description-text matches.
 
 Output contains only compact navigation results:
 
@@ -148,6 +173,8 @@ Output is deliberately bounded to the node, its canonical path, its parent, and 
   "name": "Concept",
   "status": "known",
   "understanding": "The user's concise conceptual understanding.",
+  "description": [],
+  "terms": [],
   "path": ["Subjects", "Parent concept", "Concept"],
   "parent": { "id": 4, "name": "Parent concept" },
   "children": [
@@ -156,7 +183,7 @@ Output is deliberately bounded to the node, its canonical path, its parent, and 
 }
 ```
 
-`parent` is null for a node directly under a virtual primary branch. Grandchildren, connections, timestamps, and unrelated nodes are not returned.
+`parent` is null for a node directly under a virtual primary branch. Grandchildren, connections, timestamps, and unrelated nodes are not returned. Immediate child summaries intentionally omit descriptions and terms; inspect a child by its explicit ID to read its complete bounded content.
 
 ## `establish_known_node`
 
@@ -171,7 +198,16 @@ Input:
   "node_id": 12,
   "expected_revision": 3,
   "understanding": "A meaningful explanation in the user's words.",
-  "children": ["First subdivision", "Second subdivision"]
+  "description": [],
+  "terms": [],
+  "children": [
+    {
+      "name": "First subdivision",
+      "description": [{ "type": "text", "text": "A short explanatory passage." }],
+      "terms": []
+    },
+    "Second subdivision"
+  ]
 }
 ```
 
@@ -179,12 +215,13 @@ The operation:
 
 1. requires the node's current revision to equal `expected_revision`;
 2. requires a non-empty understanding of at most 2,000 characters;
-3. marks the node known and advances its revision once;
-4. reuses case-insensitive matches among existing immediate children;
-5. creates missing immediate children as unassessed;
-6. never deletes or replaces an existing child;
-7. permits `children: []` for a known leaf;
-8. applies every change in one transaction.
+3. optionally replaces the node's structured description and local terms;
+4. marks the node known and advances its revision once;
+5. reuses case-insensitive matches among existing immediate children;
+6. creates missing immediate children as unassessed, including their validated descriptions and terms when supplied;
+7. never deletes or replaces an existing child;
+8. permits `children: []` for a known leaf;
+9. applies every change in one transaction.
 
 Output:
 
@@ -194,7 +231,9 @@ Output:
     "id": 12,
     "revision": 4,
     "status": "known",
-    "understanding": "A meaningful explanation in the user's words."
+    "understanding": "A meaningful explanation in the user's words.",
+    "description": [],
+    "terms": []
   },
   "children_created": ["First subdivision"],
   "children_existing": ["Second subdivision"],
@@ -217,17 +256,19 @@ Input:
   "node_id": 12,
   "expected_revision": 4,
   "understanding": "An improved concise understanding.",
+  "description": [],
+  "terms": [],
   "children_to_add": ["Another subdivision"]
 }
 ```
 
-This operation accepts only an already known node. It updates the understanding, advances the revision once, and adds or reuses immediate children using the same atomic rules as establishment. It cannot delete, rename, move, merge, recategorize, or otherwise restructure any node. An empty `children_to_add` array updates a known leaf's understanding without decomposing it.
+This operation accepts only an already known node. It updates the understanding and optional description/terms, advances the revision once, and adds or reuses immediate children using the same atomic rules as establishment. It cannot delete, rename, move, merge, recategorize, or otherwise restructure any node. An empty `children_to_add` array updates node content without decomposing it.
 
 The output has the same shape as `establish_known_node`.
 
 ## Concurrency and frontier failures
 
-A stale `expected_revision` returns HTTP `409` with code `stale_revision` and both the expected and current revisions in `error.details`. No understanding or child change is committed.
+A stale `expected_revision` returns HTTP `409` with code `stale_revision` and both the expected and current revisions in `error.details`. No understanding, description, term, or child change is committed.
 
 Calling `update_known_node` on an unknown or unassessed node returns HTTP `409` with code `node_not_known`. The caller must explicitly use `establish_known_node` if the user has established an understanding.
 

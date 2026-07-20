@@ -32,7 +32,12 @@ test("adds revision 1 to databases created before agent revision support", () =>
     database = openDatabase(path, { seed: false });
     const columns = database.prepare("PRAGMA table_info(nodes)").all();
     assert.ok(columns.some((column) => column.name === "revision"));
+    assert.ok(columns.some((column) => column.name === "description_json"));
+    assert.ok(columns.some((column) => column.name === "terms_json"));
     assert.equal(database.prepare("SELECT revision FROM nodes WHERE id = 1").get().revision, 1);
+    const migrated = database.prepare("SELECT description_json, terms_json FROM nodes WHERE id = 1").get();
+    assert.equal(migrated.description_json, "[]");
+    assert.equal(migrated.terms_json, "[]");
   } finally {
     database?.close();
     rmSync(directory, { recursive: true, force: true });

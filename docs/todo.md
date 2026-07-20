@@ -74,3 +74,16 @@ Define a dedicated agent contract before adding these operations to `src/agent-t
 - report imported counts and stable format/version errors;
 - integrate with the planned audit history so the initiating agent call and replacement outcome are recorded;
 - remain stateless and avoid server-side file paths or agent-controlled arbitrary filesystem writes.
+
+## 6. Term evolution beyond node-local definitions
+
+Status: intentionally deferred. Inline terms are currently lightweight definitions owned by one node and referenced only from that node's structured description.
+
+Consider global term registries, aliases, and promotion of a local term into a knowledge node only after concrete usage demonstrates the need. Any future design must:
+
+- preserve existing node-local term IDs and references during migration;
+- avoid turning concise contextual vocabulary into a parallel knowledge graph;
+- define how aliases affect display and lookup without introducing plain-text auto-linking;
+- make term-to-node promotion explicit and preserve the distinction between a definition and independently explorable knowledge;
+- prevent a promoted concept from silently existing as both a child and a redundant local term;
+- remain fully validated by the domain layer and represented in transfer and agent contracts.
