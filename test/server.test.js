@@ -117,4 +117,32 @@ describe("HTTP application", () => {
     assert.deepEqual(nodes.body.nodes.map((node) => node.name), ["Metaphysics", "Physics"]);
     assert.equal(app.knowledgeBase.getNode(first.id).connections[0].node.id, second.id);
   });
+
+  test("clears knowledge through the browser API and retains the base taxonomy", async () => {
+    const physics = app.knowledgeBase.createNode({
+      name: "Physics",
+      branch: "subjects",
+      status: "known",
+      understanding: "Physics models matter, energy, motion, and their interactions."
+    });
+    app.knowledgeBase.createNode({
+      name: "Mechanics",
+      branch: "subjects",
+      parentId: physics.id,
+      status: "unassessed"
+    });
+
+    const cleared = await request("/api/clear", { method: "POST" });
+    assert.equal(cleared.response.status, 200);
+    assert.equal(cleared.body.cleared.nodes_deleted, 1);
+    assert.equal(cleared.body.cleared.base_nodes_preserved, 1);
+    assert.equal(cleared.body.cleared.base_nodes_reset, 1);
+    assert.equal(cleared.body.cleared.base_nodes_created, 49);
+
+    const nodes = await request("/api/nodes");
+    assert.equal(nodes.body.nodes.length, 50);
+    assert.ok(nodes.body.nodes.every((node) => node.parentId === null));
+    assert.ok(nodes.body.nodes.every((node) => node.status === "unassessed"));
+    assert.equal(nodes.body.nodes.find((node) => node.name === "Physics").id, physics.id);
+  });
 });

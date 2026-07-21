@@ -1,4 +1,5 @@
 import { badRequest, conflict, notFound } from "./errors.js";
+import { INITIAL_TAXONOMY } from "./initial-taxonomy.js";
 
 export const BRANCHES = Object.freeze([
   { id: "subjects", name: "Subjects", description: "Objective and descriptive knowledge." },
@@ -556,6 +557,71 @@ export class KnowledgeBase {
         format_version: KNOWLEDGE_EXPORT_VERSION,
         nodes_imported: validated.nodes.length,
         connections_imported: validated.connections.length
+      };
+    });
+  }
+
+  clearKnowledge() {
+    return this.#inTransaction(() => {
+      const baseEntries = Object.entries(INITIAL_TAXONOMY)
+        .flatMap(([branch, names]) => names.map((name) => ({ branch, name })));
+      const baseKeys = new Set(baseEntries.map(({ branch, name }) => `${branch}\u0000${name}`));
+      const rows = this.database.prepare("SELECT id, name, branch, parent_id FROM nodes").all();
+      const retainedIds = new Set(rows
+        .filter((row) => row.parent_id === null && baseKeys.has(`${row.branch}\u0000${row.name}`))
+        .map((row) => row.id));
+
+      const connectionsDeleted = this.database.prepare("DELETE FROM connections").run().changes;
+      const leafRows = this.database.prepare(`
+        SELECT id FROM nodes
+        WHERE NOT EXISTS (SELECT 1 FROM nodes child WHERE child.parent_id = nodes.id)
+      `);
+      const deleteNode = this.database.prepare("DELETE FROM nodes WHERE id = ?");
+
+      let nodesDeleted = 0;
+      while (true) {
+        const deletableIds = leafRows.all()
+          .map((row) => row.id)
+          .filter((id) => !retainedIds.has(id));
+        if (deletableIds.length === 0) break;
+        for (const id of deletableIds) nodesDeleted += deleteNode.run(id).changes;
+      }
+
+      const remainingNonBase = this.database.prepare("SELECT count(*) AS count FROM nodes").get().count
+        - retainedIds.size;
+      if (remainingNonBase !== 0) throw new Error("Stored knowledge hierarchy could not be cleared.");
+
+      const timestamp = now();
+      const resetBase = this.database.prepare(`
+        UPDATE nodes
+        SET status = 'unassessed', understanding = NULL, terms_json = '[]',
+            revision = revision + 1, updated_at = ?
+        WHERE id = ?
+          AND (status != 'unassessed' OR understanding IS NOT NULL OR terms_json != '[]')
+      `);
+      let baseNodesReset = 0;
+      for (const id of retainedIds) baseNodesReset += resetBase.run(timestamp, id).changes;
+
+      const existingKeys = new Set(this.database.prepare(`
+        SELECT name, branch FROM nodes WHERE parent_id IS NULL
+      `).all().map((row) => `${row.branch}\u0000${row.name}`));
+      const insertBase = this.database.prepare(`
+        INSERT INTO nodes (
+          name, branch, parent_id, status, understanding, terms_json, revision, created_at, updated_at
+        ) VALUES (?, ?, NULL, 'unassessed', NULL, '[]', 1, ?, ?)
+      `);
+      let baseNodesCreated = 0;
+      for (const entry of baseEntries) {
+        if (existingKeys.has(`${entry.branch}\u0000${entry.name}`)) continue;
+        baseNodesCreated += insertBase.run(entry.name, entry.branch, timestamp, timestamp).changes;
+      }
+
+      return {
+        nodes_deleted: nodesDeleted,
+        connections_deleted: connectionsDeleted,
+        base_nodes_preserved: retainedIds.size,
+        base_nodes_reset: baseNodesReset,
+        base_nodes_created: baseNodesCreated
       };
     });
   }

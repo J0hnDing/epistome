@@ -61,6 +61,8 @@ The two primary branches remain virtual constants assembled around stored nodes 
 
 An `app_metadata` marker makes this a one-time seed. Existing matching nodes are preserved, and a seeded node deleted or reorganized by the user is not recreated on later startups. Tests can explicitly disable the seed to exercise isolated domain scenarios against an empty tree.
 
+The browser-only clear operation is an explicit reset rather than another seed pass. In one immediate transaction it removes connections, deletes non-base nodes from leaves upward, resets retained taxonomy entries, and inserts any missing approved entries. It preserves application metadata and does not alter the one-time startup behavior.
+
 Ideologies is treated as the broad philosophy branch. The seed therefore has no Philosophy container and no redundant “Philosophy of …” layer.
 
 ## Failure model

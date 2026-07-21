@@ -8,6 +8,8 @@ This is not a claim that the user understands the concepts, nor is it an exhaust
 
 The seed runs once. Existing matching nodes are preserved, and later user deletions or reorganizations are not undone.
 
+The explicit **Clear knowledge** action is the exception to one-time seeding: it deliberately restores this complete taxonomy, resets its nodes to pristine unassessed leaves, and removes all other concepts and connections.
+
 ## Subjects
 
 - Agriculture and Food Systems

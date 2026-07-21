@@ -1,5 +1,11 @@
 # Working history
 
+## 2026-07-21 — Clear knowledge while preserving the base taxonomy
+
+- Added an atomic browser-only clear operation that removes all non-base concepts and cross-connections while restoring the approved Subject and Ideology taxonomy as content-free unassessed leaves.
+- Preserved IDs for base entries that remain in their original top-level locations, recreated missing or reorganized entries, and retained application metadata.
+- Added a confirmed Clear knowledge control, domain and HTTP coverage, and documentation of the destructive reset boundary.
+
 ## 2026-07-21 — Explicit ownership rules for agent-defined terms
 
 - Clarified across the machine-readable guide, tool catalog, OpenAPI specification, and agent docs that terms must be central to the current known node's own explanation.

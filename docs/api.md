@@ -81,6 +81,28 @@ Import preserves exported identities and timestamps. The server rejects unknown 
 
 Epistome emits and accepts version 3 with `format: "epistome"`. Older versions are intentionally unsupported.
 
+## Clear knowledge
+
+This is a browser-oriented destructive operation and is not exposed in the agent tool catalog.
+
+### `POST /api/clear`
+
+Atomically removes every non-base concept and all cross-connections. Approved initial taxonomy entries remain at their existing IDs when they are still in their original top-level location, are reset to content-free `unassessed` leaves, and any missing or reorganized base entries are recreated. Application metadata is preserved.
+
+The response reports the applied changes:
+
+```json
+{
+  "cleared": {
+    "nodes_deleted": 12,
+    "connections_deleted": 3,
+    "base_nodes_preserved": 48,
+    "base_nodes_reset": 7,
+    "base_nodes_created": 2
+  }
+}
+```
+
 ## Node writes
 
 ### `POST /api/nodes`

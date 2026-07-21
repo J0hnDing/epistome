@@ -58,3 +58,5 @@ No relationship type is stored in the base system. Typed edges are an optional f
 ## Deletion
 
 Deletion is intentionally conservative. A node with children cannot be deleted until its children are moved or deleted. This prevents an ordinary delete action from silently removing a complete area of the user's conceptual map.
+
+The separate browser-only clear operation is explicitly destructive. It atomically removes every non-base node and cross-connection, restores the approved initial taxonomy as top-level unassessed leaves with no explanations or terms, and preserves application metadata. This bulk reset is not an agent operation.

@@ -69,6 +69,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .data-actions { margin: 0 8px; padding-top: 20px; border-top: 1px solid var(--line); }
 .data-actions > div { display: flex; gap: 8px; }
 .data-actions .secondary-button { flex: 1; min-height: 38px; padding: 8px 12px; }
+.data-actions > .danger-button { width: 100%; min-height: 38px; margin-top: 8px; padding: 8px 12px; border-color: #e1bdb5; }
 .data-actions > p:last-of-type { margin: 10px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
 
 .content-panel { min-width: 0; padding: clamp(46px, 8vw, 100px); }

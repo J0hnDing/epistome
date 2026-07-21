@@ -82,6 +82,18 @@ npm run check
 
 `npm run check` performs JavaScript syntax checks and runs the complete domain and HTTP test suite.
 
+## How Codex and GPT-5.6 were used
+
+### During development
+
+Epistome was developed with Codex using GPT-5.6 as a coding collaborator. Codex helped turn the product rules into the Node.js and SQLite implementation, browser interface, agent API, automated tests, and documentation. It was also used to inspect changes, run the repository checks, and refine behavior against the domain invariants in `AGENTS.md`. Product direction and decisions remained human-directed, while the checked-in code, tests, and documentation are the reviewable source of truth.
+
+### During use
+
+Codex with GPT-5.6 can also be used as an optional external agent for a running Epistome instance. It first reads the tool catalog, agent guide, and OpenAPI specification below, then uses the stateless HTTP operations to search for concepts, inspect explicit nodes, list eligible Subject frontiers, and establish or update knowledge with optimistic revisions.
+
+The model should help structure the user's own understanding rather than substitute its knowledge for theirs. Epistome enforces this boundary by limiting agent mutations: an agent cannot delete, rename, move, merge, or recategorize nodes, and it can add only name-only unassessed immediate children. Codex and GPT-5.6 are not bundled into the application, and running Epistome itself requires no OpenAI account, API key, or model dependency. Other compatible AI agents can use the same documented interface.
+
 ## AI agent discovery
 
 An AI agent should begin with these read-only endpoints:

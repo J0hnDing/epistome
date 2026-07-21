@@ -20,7 +20,7 @@ const elements = Object.fromEntries([
   "nodeDialogTitle", "editingNodeId", "nameInput", "branchInput", "parentInput", "statusInput",
   "understandingField", "understandingInput", "nodeFormError", "saveNodeButton", "connectionDialog",
   "connectionForm", "connectionTarget", "connectionFormError", "exportButton", "importButton",
-  "importFileInput", "collapseAllButton", "expandAllButton"
+  "importFileInput", "clearKnowledgeButton", "collapseAllButton", "expandAllButton"
 ].map((id) => [id, document.getElementById(id)]));
 
 async function api(path, options = {}) {
@@ -80,6 +80,7 @@ async function saveExport(snapshot, handle, suggestedName) {
 function setTransferBusy(busy) {
   elements.exportButton.disabled = busy;
   elements.importButton.disabled = busy;
+  elements.clearKnowledgeButton.disabled = busy;
 }
 
 function labelStatus(status) {
@@ -588,6 +589,33 @@ elements.importFileInput.addEventListener("change", async () => {
     await refresh();
     showOnly(elements.welcome);
     showNotice(`Imported ${imported.nodes_imported} nodes and ${imported.connections_imported} connections.`);
+  } catch (error) {
+    showNotice(error.message, true);
+  } finally {
+    setTransferBusy(false);
+  }
+});
+
+elements.clearKnowledgeButton.addEventListener("click", async () => {
+  const confirmed = window.confirm(
+    "Clear all knowledge? This deletes every non-base concept and connection, resets the base taxonomy to unassessed, and cannot be undone."
+  );
+  if (!confirmed) return;
+
+  setTransferBusy(true);
+  try {
+    const { cleared } = await api("/api/clear", { method: "POST" });
+    state.selected = null;
+    state.collapsedBranches.clear();
+    state.collapsedNodes.clear();
+    state.disclosureInitialized = false;
+    await refresh();
+    showOnly(elements.welcome);
+    const conceptLabel = cleared.nodes_deleted === 1 ? "concept" : "concepts";
+    const connectionLabel = cleared.connections_deleted === 1 ? "connection" : "connections";
+    showNotice(
+      `Knowledge cleared. Removed ${cleared.nodes_deleted} ${conceptLabel} and ${cleared.connections_deleted} ${connectionLabel}.`
+    );
   } catch (error) {
     showNotice(error.message, true);
   } finally {

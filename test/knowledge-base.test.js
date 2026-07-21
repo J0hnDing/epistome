@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, test } from "node:test";
 import { openDatabase } from "../src/database.js";
 import { AppError } from "../src/errors.js";
+import { INITIAL_TAXONOMY } from "../src/initial-taxonomy.js";
 import { KnowledgeBase } from "../src/knowledge-base.js";
 
 let knowledgeBase;
@@ -153,6 +154,36 @@ describe("knowledge tree", () => {
     kb.deleteNode(child.id);
     kb.deleteNode(parent.id);
     assert.deepEqual(kb.listNodes(), []);
+  });
+
+  test("clears knowledge while restoring the base taxonomy as unassessed leaves", () => {
+    const kb = createKnowledgeBase();
+    const physics = known("Physics");
+    const mechanics = known("Mechanics", "subjects", physics.id);
+    const ethics = known("Ethics", "ideologies");
+    const custom = known("Personal Notes");
+    kb.createConnection({ sourceId: mechanics.id, targetId: custom.id });
+    kb.database.prepare("INSERT INTO app_metadata (key, value) VALUES ('custom', 'preserved')").run();
+
+    const result = kb.clearKnowledge();
+
+    assert.deepEqual(result, {
+      nodes_deleted: 2,
+      connections_deleted: 1,
+      base_nodes_preserved: 2,
+      base_nodes_reset: 2,
+      base_nodes_created: 48
+    });
+    const nodes = kb.listNodes();
+    assert.equal(nodes.length, INITIAL_TAXONOMY.subjects.length + INITIAL_TAXONOMY.ideologies.length);
+    assert.ok(nodes.every((node) => node.parentId === null));
+    assert.ok(nodes.every((node) => node.status === "unassessed"));
+    assert.ok(nodes.every((node) => node.understanding === null));
+    assert.ok(nodes.every((node) => node.terms.length === 0));
+    assert.equal(nodes.find((node) => node.name === "Physics").id, physics.id);
+    assert.equal(nodes.find((node) => node.name === "Ethics").id, ethics.id);
+    assert.equal(kb.database.prepare("SELECT count(*) AS count FROM connections").get().count, 0);
+    assert.equal(kb.database.prepare("SELECT value FROM app_metadata WHERE key = 'custom'").get().value, "preserved");
   });
 
   test("advances a parent revision when its immediate child view changes", () => {
