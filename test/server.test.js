@@ -45,11 +45,6 @@ describe("HTTP application", () => {
         branch: "subjects",
         status: "known",
         understanding: "Computer science studies computation, information, and the systems that operate on them.",
-        description: [
-          { type: "text", text: "Programs execute " },
-          { type: "term", termId: "algorithms" },
-          { type: "text", text: "." }
-        ],
         terms: [{
           id: "algorithms",
           label: "algorithms",
@@ -62,7 +57,7 @@ describe("HTTP application", () => {
 
     const id = created.body.node.id;
     const read = await request(`/api/nodes/${id}`);
-    assert.deepEqual(read.body.node.description, created.body.node.description);
+    assert.equal("description" in read.body.node, false);
     assert.deepEqual(read.body.node.terms, created.body.node.terms);
     const updated = await request(`/api/nodes/${id}`, {
       method: "PATCH",

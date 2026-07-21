@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The initial taxonomy provides broad navigation and assessment starting points. Every node is inserted directly beneath Subjects or Ideologies with status `unassessed`, no understanding statement, explanatory description, local terms, or children.
+The initial taxonomy provides broad navigation and assessment starting points. Every node is inserted directly beneath Subjects or Ideologies with status `unassessed`, no explanation, terms, or children.
 
 This is not a claim that the user understands the concepts, nor is it an exhaustive ontology. Deeper structure should appear only after the user establishes a broad node as known and chooses useful immediate subdivisions.
 

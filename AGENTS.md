@@ -12,16 +12,16 @@ This project models one person's conceptual understanding as a tree. Preserve th
 2. They are virtual structural roots, not persisted knowledge nodes.
 3. Every persisted node has one canonical parent location and belongs to exactly one branch.
 4. Parent-child relationships mean conceptual narrowing.
-5. A known node requires a non-empty understanding statement.
+5. A known node requires one non-empty direct explanation in its `understanding` field.
 6. Unknown and unassessed nodes cannot have children.
 7. A known descendant cannot exist below an unknown or unassessed ancestor.
 8. Cross-connections are undirected associations and never change canonical parentage.
-9. A fresh production database receives the one-time broad taxonomy in `src/initial-taxonomy.js`. Every seeded node is top-level, unassessed, and has no understanding or children.
+9. A fresh production database receives the one-time broad taxonomy in `src/initial-taxonomy.js`. Every seeded node is top-level, unassessed, and has no explanation, terms, or children.
 10. Do not add sources, confidence, mastery, history, automation, assessments, or agent behavior to the base model without an explicit product decision.
 11. Agent operations are stateless: every navigation or mutation request identifies its node explicitly. Never introduce a process-wide or session-wide `current_node`.
 12. Agent mutations use optimistic revisions and must apply the node update and child creation atomically.
 13. `list_frontier_nodes` is Subjects-only. A frontier node is unknown or unassessed and has an immediate canonical parent that is known; virtual-root children do not satisfy this definition.
-14. Explanatory descriptions are structured plain text plus explicit references to concise terms owned by the same node. Terms are not knowledge nodes, children, or graph vertices; every defined term must be referenced locally.
+14. Known nodes may own concise terms used by their direct explanation. Unknown and unassessed nodes have no explanation or terms. Terms are not knowledge nodes, children, or graph vertices.
 
 ## Architecture
 
@@ -42,12 +42,12 @@ Use Node built-ins before adding dependencies. The current system intentionally 
 - Read `README.md` and relevant files in `docs/` before changing behavior.
 - Keep changes small and testable. Put invariants in the domain layer, not only in the UI.
 - Never commit the local `data/` directory or a SQLite database.
-- Do not prepopulate known status, understanding statements, child taxonomies, or demonstration content. Changes to the approved initial unassessed taxonomy require an explicit product decision.
-- Treat stored node names and understanding statements as untrusted text in the browser.
+- Do not prepopulate known status, explanations, terms, child taxonomies, or demonstration content. Changes to the approved initial unassessed taxonomy require an explicit product decision.
+- Treat stored node names, explanations, term labels, and term definitions as untrusted text in the browser.
 - Keep agent search results compact and agent node reads bounded to the requested node, canonical path, parent, and immediate children.
 - Never let agent update operations delete, rename, move, merge, or recategorize nodes.
 - Keep `src/agent-guide.js`, `src/agent-tools.js`, `src/openapi.js`, `docs/agent-guide.md`, and `docs/agent-api.md` aligned whenever the agent contract changes.
-- Preserve the expansion boundary in machine-readable descriptions: create only useful immediate conceptual subdivisions as unassessed leaves, never infer grandchildren or exhaustive taxonomies, and allow an empty child list for a known leaf.
+- Preserve the expansion boundary in machine-readable descriptions: create only useful immediate conceptual subdivisions as name-only unassessed leaves, never attach explanations or terms to them, never infer grandchildren or exhaustive taxonomies, and allow an empty child list for a known leaf.
 - Keep frontier results compact, cursor-paginated, and restricted to Subjects even when filtering by parent ID.
 - Preserve unrelated worktree changes.
 - Record notable completed behavior changes in `docs/working_history.md`.

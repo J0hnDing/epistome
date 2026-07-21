@@ -26,7 +26,7 @@ Requests containing fields outside an operation's published input schema are rej
 
 Add a child only when it is a major conceptual subdivision through which the user currently organizes the known parent: a subfield, type, major component, narrower question, or specific position. The subdivision should clarify the user's understanding or expose a useful frontier.
 
-Every created child is `unassessed` and must remain a leaf. The agent must inspect and establish that child in a later explicit operation before it can be expanded.
+Every created child is a name-only `unassessed` leaf with no explanation or terms. Child arrays accept strings only. The agent must inspect and establish that child in a later explicit operation before it can receive content or be expanded.
 
 Stop rather than adding:
 
@@ -38,17 +38,13 @@ Stop rather than adding:
 
 Use an empty child list when no useful decomposition exists. A known node is allowed to remain a leaf.
 
-## Structured descriptions and local terms
+## Explanations and local terms
 
-Nodes at any status may contain explanatory context separate from the user's known-only `understanding`. The description is an ordered array of safe text parts and explicit node-local term references:
+Known nodes contain one direct explanation in `understanding` and may define concise node-local terms:
 
 ```json
 {
-  "description": [
-    { "type": "text", "text": "A model updates " },
-    { "type": "term", "termId": "weights" },
-    { "type": "text", "text": " during training." }
-  ],
+  "understanding": "Training adjusts model weights using patterns in data.",
   "terms": [
     {
       "id": "weights",
@@ -59,9 +55,9 @@ Nodes at any status may contain explanatory context separate from the user's kno
 }
 ```
 
-The server rejects HTML-shaped description objects, malformed reference parts, references that do not resolve on the same node, duplicate local IDs, and defined terms that are not referenced. Descriptions without terms are valid. Use a knowledge node instead of a local term when a concept needs independent exploration, children, or substantial explanation.
+The explanation should state the topic's essence and must not use metacommentary such as “I understand.” Term IDs are unique within the node. Define only vocabulary central to the current node's own explanation. Never define an existing or proposed child, or vocabulary whose explanation belongs to a narrower descendant. If a concept is or should become a child, omit it from the parent's terms and define any essential child-owned vocabulary only after that child is explicitly established as known. Terms are not a second child list, topic outline, or exhaustive glossary.
 
-`description` and `terms` are optional mutation fields for backward compatibility. Omit both to preserve the node's current explanatory content. If either is supplied, the server validates it together with the supplied or existing counterpart. Child name strings remain accepted; child objects add explanatory content only when that child is newly created. A matching existing child is reused unchanged.
+Unknown and unassessed nodes always return `understanding: null` and `terms: []`. The removed `description` field and child objects are rejected. A matching existing child name is reused unchanged.
 
 ## `list_frontier_nodes`
 
@@ -133,7 +129,7 @@ Input:
 - `parent_id` is optional. When present, only descendants of that explicit parent are searched; the parent itself is not a result.
 - `branch` is optional. It is `subjects`, `ideologies`, or null. If both branch and parent are present, they must agree.
 - `limit` defaults to 5 and must be between 1 and 25.
-- Name matches rank ahead of understanding- and description-text matches.
+- Name matches rank ahead of known-node explanation and term matches.
 
 Output contains only compact navigation results:
 
@@ -172,8 +168,7 @@ Output is deliberately bounded to the node, its canonical path, its parent, and 
   "revision": 3,
   "name": "Concept",
   "status": "known",
-  "understanding": "The user's concise conceptual understanding.",
-  "description": [],
+  "understanding": "A direct explanation of the topic's essence.",
   "terms": [],
   "path": ["Subjects", "Parent concept", "Concept"],
   "parent": { "id": 4, "name": "Parent concept" },
@@ -183,7 +178,7 @@ Output is deliberately bounded to the node, its canonical path, its parent, and 
 }
 ```
 
-`parent` is null for a node directly under a virtual primary branch. Grandchildren, connections, timestamps, and unrelated nodes are not returned. Immediate child summaries intentionally omit descriptions and terms; inspect a child by its explicit ID to read its complete bounded content.
+`parent` is null for a node directly under a virtual primary branch. Grandchildren, connections, timestamps, and unrelated nodes are not returned. Immediate child summaries intentionally omit explanation and terms; inspect a child by its explicit ID to read its complete bounded content.
 
 ## `establish_known_node`
 
@@ -197,28 +192,20 @@ Input:
 {
   "node_id": 12,
   "expected_revision": 3,
-  "understanding": "A meaningful explanation in the user's words.",
-  "description": [],
+  "understanding": "A direct explanation of the topic's essence in the user's words.",
   "terms": [],
-  "children": [
-    {
-      "name": "First subdivision",
-      "description": [{ "type": "text", "text": "A short explanatory passage." }],
-      "terms": []
-    },
-    "Second subdivision"
-  ]
+  "children": ["First subdivision", "Second subdivision"]
 }
 ```
 
 The operation:
 
 1. requires the node's current revision to equal `expected_revision`;
-2. requires a non-empty understanding of at most 2,000 characters;
-3. optionally replaces the node's structured description and local terms;
+2. requires one non-empty direct explanation of at most 2,000 characters;
+3. optionally sets local terms on the now-known node;
 4. marks the node known and advances its revision once;
 5. reuses case-insensitive matches among existing immediate children;
-6. creates missing immediate children as unassessed, including their validated descriptions and terms when supplied;
+6. creates missing immediate children as name-only unassessed leaves with no explanation or terms;
 7. never deletes or replaces an existing child;
 8. permits `children: []` for a known leaf;
 9. applies every change in one transaction.
@@ -231,8 +218,7 @@ Output:
     "id": 12,
     "revision": 4,
     "status": "known",
-    "understanding": "A meaningful explanation in the user's words.",
-    "description": [],
+    "understanding": "A direct explanation of the topic's essence in the user's words.",
     "terms": []
   },
   "children_created": ["First subdivision"],
@@ -255,20 +241,19 @@ Input:
 {
   "node_id": 12,
   "expected_revision": 4,
-  "understanding": "An improved concise understanding.",
-  "description": [],
+  "understanding": "An improved direct explanation.",
   "terms": [],
   "children_to_add": ["Another subdivision"]
 }
 ```
 
-This operation accepts only an already known node. It updates the understanding and optional description/terms, advances the revision once, and adds or reuses immediate children using the same atomic rules as establishment. It cannot delete, rename, move, merge, recategorize, or otherwise restructure any node. An empty `children_to_add` array updates node content without decomposing it.
+This operation accepts only an already known node. It updates the single explanation and optional terms, advances the revision once, and adds or reuses name-only immediate children using the same atomic rules as establishment. It cannot delete, rename, move, merge, recategorize, otherwise restructure a node, or attach content to a child. An empty `children_to_add` array updates known-node content without decomposing it.
 
 The output has the same shape as `establish_known_node`.
 
 ## Concurrency and frontier failures
 
-A stale `expected_revision` returns HTTP `409` with code `stale_revision` and both the expected and current revisions in `error.details`. No understanding, description, term, or child change is committed.
+A stale `expected_revision` returns HTTP `409` with code `stale_revision` and both the expected and current revisions in `error.details`. No explanation, term, or child change is committed.
 
 Calling `update_known_node` on an unknown or unassessed node returns HTTP `409` with code `node_not_known`. The caller must explicitly use `establish_known_node` if the user has established an understanding.
 

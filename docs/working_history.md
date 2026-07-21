@@ -1,5 +1,27 @@
 # Working history
 
+## 2026-07-21 — Explicit ownership rules for agent-defined terms
+
+- Clarified across the machine-readable guide, tool catalog, OpenAPI specification, and agent docs that terms must be central to the current known node's own explanation.
+- Prohibited agents from defining existing or proposed children, or vocabulary owned by narrower descendants, as parent terms; child-owned vocabulary is defined only after that child is explicitly established as known.
+- Clarified that terms are not a second child list, topic outline, or exhaustive glossary, and protected the guidance with discovery-contract tests.
+
+## 2026-07-21 — One explanation, known-only content
+
+- Removed the separate structured `description` field from persistence, the domain model, browser payloads, exports, and the agent contract.
+- Kept `understanding` as the single direct explanation of a known topic's essence and clarified that agents must not write “I understand” metacommentary.
+- Restricted terms to known nodes; unknown and unassessed nodes now always have a null explanation and empty terms, and their UI omits both content sections.
+- Restricted agent-created children to name strings so every new child is an unassessed leaf with no explanation or terms.
+- Added a database rebuild migration that discards legacy descriptions, preserves known-node explanations and terms, and clears terms on non-known nodes.
+- Advanced the breaking export format to version 3 and intentionally stopped accepting older import versions.
+
+## 2026-07-21 — Unified explanation and path terms
+
+- Replaced the separate Explanation and Current understanding sections with one authoritative Explanation block: known nodes use their required essence statement, while other nodes use structured context when available.
+- Renamed the known-node form field to Explanation and clarified that it should directly state the topic's essence.
+- Made the Terms section visible for every selected node, including a clear empty state when no definitions exist on the canonical path.
+- Included terms defined by canonical ancestors in the glossary while preserving each term's owning node and the same-node structured-reference contract.
+
 ## 2026-07-20 — Collapsible tree and visible term glossary
 
 - Made primary branches and parent nodes independently collapsible with accessible disclosure controls, hidden-child counts, and expand-all/collapse-all actions.

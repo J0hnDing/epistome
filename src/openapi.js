@@ -33,11 +33,11 @@ export const OPENAPI_SPEC = Object.freeze({
   openapi: "3.1.0",
   info: {
     title: "Epistome — Agent API",
-    version: "1.1.0",
+    version: "1.2.0",
     summary: "Stateless inspection and constrained updates for a personal conceptual-understanding tree.",
     description: [
       "Epistome is a personal conceptual understanding tree, not a fact archive or complete external ontology.",
-      "Knowledge is organized beneath the virtual Subjects and Ideologies roots. Known nodes contain the user's concise understanding. Nodes at any status may also carry a structured explanatory description with explicit references to concise terms owned by that node.",
+      "Knowledge is organized beneath the virtual Subjects and Ideologies roots. A known node contains one direct explanation of its essence and may define concise local terms. Unknown and unassessed nodes contain neither explanations nor terms.",
       "A fresh production database provides broad top-level Subject and Ideology concepts as unassessed leaves. These are assessment starting points, not claims of knowledge. Ideologies is philosophy in the broad sense and has no separate Philosophy container.",
       "Agent navigation is stateless and every operation uses explicit node IDs. Mutations use optimistic revisions, cannot restructure or delete nodes, and preserve the frontier invariants.",
       `${EXPANSION_BOUNDARY.summary} ${EXPANSION_BOUNDARY.rule}`,
@@ -65,7 +65,7 @@ export const OPENAPI_SPEC = Object.freeze({
         operationId: "get_agent_guide",
         tags: ["Discovery"],
         summary: "Understand the project and safe agent workflow",
-        description: "Returns the project purpose, root meanings, statuses, understanding-statement and inline-term policies, explicit-ID workflow, mutation limits, and child expansion boundary.",
+        description: "Returns the project purpose, root meanings, statuses, explanation and term policies, explicit-ID workflow, mutation limits, and child expansion boundary.",
         responses: { 200: jsonResponse("Machine-readable project and agent guide.", { $ref: "#/components/schemas/AgentGuide" }) }
       }
     },
@@ -109,7 +109,7 @@ export const OPENAPI_SPEC = Object.freeze({
         operationId: "get_knowledge_node",
         tags: ["Knowledge"],
         summary: "Inspect one explicitly identified node",
-        description: "Returns only the node's mutation revision, understanding, structured description, local terms, canonical path, parent, and immediate children. It deliberately excludes grandchildren, connections, timestamps, and unrelated nodes.",
+        description: "Returns only the node's mutation revision, known-node explanation, local terms, canonical path, parent, and immediate children. Unknown and unassessed nodes return null understanding and empty terms. It deliberately excludes grandchildren, connections, timestamps, and unrelated nodes.",
         requestBody: jsonRequest({ $ref: "#/components/schemas/GetKnowledgeNodeInput" }),
         responses: {
           200: jsonResponse("Bounded node view.", { $ref: "#/components/schemas/KnowledgeNode" }),
@@ -123,8 +123,9 @@ export const OPENAPI_SPEC = Object.freeze({
         tags: ["Knowledge"],
         summary: "Establish a node as known and optionally define its immediate frontier",
         description: [
-          "Atomically verifies expected_revision, records a non-empty conceptual understanding, optionally updates the node's structured explanation, marks the node known, reuses matching immediate children, and creates missing immediate children as unassessed.",
-          "New child specifications may include an explanatory description and a limited set of essential local terms explicitly referenced by that description. Omit them when they do not materially improve understanding.",
+          "Atomically verifies expected_revision, records one non-empty direct explanation, optionally defines concise terms owned by that node, marks it known, reuses matching immediate children, and creates missing immediate children as name-only unassessed leaves.",
+          "Terms must be central to the current node's explanation. Do not define an existing or proposed child, or vocabulary whose explanation belongs to a narrower descendant; define child-owned vocabulary only on that child after it is explicitly established as known.",
+          "New child specifications are names only. Child explanations and child terms are rejected because unassessed nodes carry no content.",
           EXPANSION_BOUNDARY.summary,
           EXPANSION_BOUNDARY.rule,
           "Do not submit an exhaustive external taxonomy. Do not submit facts, examples, formulas, terminology, sources, courses, projects, implementation details, or grandchildren. Use children: [] when the node is a useful known leaf. Each created child must be independently inspected and established before it can be expanded.",
@@ -143,11 +144,12 @@ export const OPENAPI_SPEC = Object.freeze({
         tags: ["Knowledge"],
         summary: "Update an already known node without restructuring",
         description: [
-          "Atomically verifies expected_revision, updates the known node's understanding and optional structured explanation, and optionally reuses or creates immediate unassessed children.",
-          "New child specifications may include an explanatory description and a limited set of essential local terms explicitly referenced by that description.",
+          "Atomically verifies expected_revision, updates the known node's single direct explanation and optional node-owned terms, and optionally reuses or creates name-only immediate unassessed children.",
+          "Terms must be central to the current node's explanation. Do not define an existing or proposed child, or vocabulary whose explanation belongs to a narrower descendant; define child-owned vocabulary only on that child after it is explicitly established as known.",
+          "Child explanations and child terms are rejected because unassessed nodes carry no content.",
           EXPANSION_BOUNDARY.summary,
           EXPANSION_BOUNDARY.rule,
-          "The operation cannot delete, rename, move, merge, recategorize, or otherwise restructure nodes. Use children_to_add: [] when only the node's understanding, description, or terms change."
+          "The operation cannot delete, rename, move, merge, recategorize, or otherwise restructure nodes. Use children_to_add: [] when only the node's explanation or terms change."
         ].join("\n\n"),
         requestBody: jsonRequest({ $ref: "#/components/schemas/UpdateKnownNodeInput" }),
         responses: {
@@ -162,14 +164,14 @@ export const OPENAPI_SPEC = Object.freeze({
       KnowledgeStatus: {
         type: "string",
         enum: ["unassessed", "unknown", "known"],
-        description: "Unassessed and unknown nodes are leaves. A known node has a meaningful understanding and may be decomposed when useful."
+        description: "Unassessed and unknown nodes are content-free leaves. A known node has one direct explanation and may be decomposed when useful."
       },
       SearchKnowledgeInput: {
         type: "object",
         additionalProperties: false,
         required: ["query"],
         properties: {
-          query: { type: "string", minLength: 1, maxLength: 200, description: "Text matched against names first, then understanding and description text." },
+          query: { type: "string", minLength: 1, maxLength: 200, description: "Text matched against names first, then known-node explanations and term definitions." },
           parent_id: { type: ["integer", "null"], minimum: 1, default: null, description: "Explicit subtree root. Only descendants are searched; null searches from the selected branch or both roots." },
           branch: { type: ["string", "null"], enum: ["subjects", "ideologies", null], default: null, description: "Optional primary-branch scope. Must match parent_id when both are present." },
           limit: { type: "integer", minimum: 1, maximum: 25, default: 5 }
@@ -261,35 +263,6 @@ export const OPENAPI_SPEC = Object.freeze({
           status: { $ref: "#/components/schemas/KnowledgeStatus" }
         }
       },
-      DescriptionTextPart: {
-        type: "object",
-        additionalProperties: false,
-        required: ["type", "text"],
-        properties: {
-          type: { type: "string", const: "text" },
-          text: { type: "string", minLength: 1 }
-        }
-      },
-      DescriptionTermPart: {
-        type: "object",
-        additionalProperties: false,
-        required: ["type", "termId"],
-        properties: {
-          type: { type: "string", const: "term" },
-          termId: { type: "string", pattern: "^[a-z][a-z0-9-]{0,63}$" }
-        }
-      },
-      NodeDescription: {
-        type: "array",
-        maxItems: 200,
-        description: "Ordered safe text and explicit node-local term references. HTML is not accepted. Every reference must resolve against terms on the same node.",
-        items: {
-          oneOf: [
-            { $ref: "#/components/schemas/DescriptionTextPart" },
-            { $ref: "#/components/schemas/DescriptionTermPart" }
-          ]
-        }
-      },
       NodeTerm: {
         type: "object",
         additionalProperties: false,
@@ -303,35 +276,25 @@ export const OPENAPI_SPEC = Object.freeze({
       NodeTerms: {
         type: "array",
         maxItems: 20,
-        description: "Concise definitions owned by this node. IDs are unique within the node and every defined term must be referenced by description.",
+        description: "A small glossary of vocabulary central to a known node's own explanation. IDs are unique within the node. Terms must not duplicate children or vocabulary owned by narrower descendants. Unknown and unassessed nodes have an empty array.",
         items: { $ref: "#/components/schemas/NodeTerm" }
       },
       GeneratedChildInput: {
-        oneOf: [
-          { type: "string", minLength: 1, maxLength: 120, description: "Backward-compatible child name when no description is useful." },
-          {
-            type: "object",
-            additionalProperties: false,
-            required: ["name"],
-            properties: {
-              name: { type: "string", minLength: 1, maxLength: 120 },
-              description: { $ref: "#/components/schemas/NodeDescription" },
-              terms: { $ref: "#/components/schemas/NodeTerms" }
-            }
-          }
-        ]
+        type: "string",
+        minLength: 1,
+        maxLength: 120,
+        description: "Name of a new unassessed leaf. Explanations and terms are not accepted for children."
       },
       KnowledgeNode: {
         type: "object",
         additionalProperties: false,
-        required: ["id", "revision", "name", "status", "understanding", "description", "terms", "path", "parent", "children"],
+        required: ["id", "revision", "name", "status", "understanding", "terms", "path", "parent", "children"],
         properties: {
           id: { type: "integer", minimum: 1 },
           revision: { type: "integer", minimum: 1, description: "Supply this value as expected_revision in the next mutation after reconsidering the returned state." },
           name: { type: "string" },
           status: { $ref: "#/components/schemas/KnowledgeStatus" },
-          understanding: { type: ["string", "null"], description: "Non-null only for known nodes." },
-          description: { $ref: "#/components/schemas/NodeDescription" },
+          understanding: { type: ["string", "null"], description: "One direct explanation of the concept's essence; non-null only for known nodes." },
           terms: { $ref: "#/components/schemas/NodeTerms" },
           path: { type: "array", minItems: 2, items: { type: "string" } },
           parent: { $ref: "#/components/schemas/ParentSummary" },
@@ -345,14 +308,13 @@ export const OPENAPI_SPEC = Object.freeze({
         properties: {
           node_id: { type: "integer", minimum: 1 },
           expected_revision: { type: "integer", minimum: 1 },
-          understanding: { type: "string", minLength: 1, maxLength: 2000, description: "The user's concise conceptual explanation in their own words." },
-          description: { $ref: "#/components/schemas/NodeDescription" },
+          understanding: { type: "string", minLength: 1, maxLength: 2000, description: "One direct explanation of the concept's essence in the user's own words, without metacommentary." },
           terms: { $ref: "#/components/schemas/NodeTerms" },
           children: {
             type: "array",
             maxItems: 100,
             items: { $ref: "#/components/schemas/GeneratedChildInput" },
-            description: `${EXPANSION_BOUNDARY.rule} A new child may include a description and referenced essential terms when useful. Use an empty array for a known leaf.`
+            description: `${EXPANSION_BOUNDARY.rule} Every item is a child name only. Use an empty array for a known leaf.`
           }
         }
       },
@@ -363,27 +325,25 @@ export const OPENAPI_SPEC = Object.freeze({
         properties: {
           node_id: { type: "integer", minimum: 1 },
           expected_revision: { type: "integer", minimum: 1 },
-          understanding: { type: "string", minLength: 1, maxLength: 2000, description: "The revised concise conceptual explanation." },
-          description: { $ref: "#/components/schemas/NodeDescription" },
+          understanding: { type: "string", minLength: 1, maxLength: 2000, description: "The revised direct explanation of the concept's essence, without metacommentary." },
           terms: { $ref: "#/components/schemas/NodeTerms" },
           children_to_add: {
             type: "array",
             maxItems: 100,
             items: { $ref: "#/components/schemas/GeneratedChildInput" },
-            description: `${EXPANSION_BOUNDARY.rule} Child descriptions and referenced essential terms are persisted only for newly created children. Existing children are reused and never replaced.`
+            description: `${EXPANSION_BOUNDARY.rule} Every item is a child name only. Existing children are reused and never replaced.`
           }
         }
       },
       MutationNode: {
         type: "object",
         additionalProperties: false,
-        required: ["id", "revision", "status", "understanding", "description", "terms"],
+        required: ["id", "revision", "status", "understanding", "terms"],
         properties: {
           id: { type: "integer", minimum: 1 },
           revision: { type: "integer", minimum: 1 },
           status: { type: "string", const: "known" },
           understanding: { type: "string", minLength: 1, maxLength: 2000 },
-          description: { $ref: "#/components/schemas/NodeDescription" },
           terms: { $ref: "#/components/schemas/NodeTerms" }
         }
       },
@@ -417,7 +377,7 @@ export const OPENAPI_SPEC = Object.freeze({
       AgentGuide: {
         type: "object",
         description: "Structured project semantics, expansion boundary, mutation limits, and recommended explicit-ID workflow.",
-        required: ["project", "structure", "understanding_statement", "inline_terms", "expansion_boundary", "agent_workflow", "mutation_limits", "resources"]
+        required: ["project", "structure", "understanding_statement", "terms", "expansion_boundary", "agent_workflow", "mutation_limits", "resources"]
       },
       AgentToolCatalog: {
         type: "object",

@@ -95,22 +95,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .status-badge.known { background: var(--moss-pale); color: var(--moss-dark); }
 .status-badge.unknown { background: #f3dfda; color: var(--rust); }
 .status-badge.unassessed { background: var(--gold-pale); color: #765623; }
-.description-block { padding: 38px 0 42px; border-bottom: 1px solid var(--line); }
-.description { max-width: 780px; white-space: pre-wrap; font: 1.18rem/1.75 Georgia, serif; }
-.inline-term { display: inline; margin: 0; padding: 0 .08em; border: 0; border-bottom: 2px dotted var(--gold); color: var(--moss-dark); background: transparent; font: inherit; font-weight: 700; line-height: inherit; }
-.inline-term:hover, .inline-term[aria-expanded="true"] { border-bottom-style: solid; background: var(--gold-pale); }
-.term-popover { position: fixed; z-index: 30; width: min(320px, calc(100vw - 24px)); padding: 18px 42px 18px 20px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); box-shadow: 0 18px 50px rgba(23, 33, 27, .2); }
-.term-popover-close { position: absolute; top: 7px; right: 8px; width: 30px; height: 30px; padding: 0; border: 0; color: var(--muted); background: transparent; font-size: 1.35rem; }
-.term-popover-label { margin: 0 0 7px; color: var(--moss-dark); font-weight: 800; }
-.term-popover-definition { margin: 0; color: var(--ink); font-size: .9rem; line-height: 1.55; }
+.explanation-block { padding: 38px 0 42px; border-bottom: 1px solid var(--line); }
+.explanation { max-width: 780px; white-space: pre-wrap; font: 1.18rem/1.75 Georgia, serif; }
 .terms-block { padding: 34px 0 38px; border-bottom: 1px solid var(--line); }
+.section-note { margin: -2px 0 0; color: var(--muted); font-size: .82rem; line-height: 1.5; }
 .term-list { margin: 16px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .term-list-item { min-width: 0; padding: 16px 18px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 .term-list dt { color: var(--moss-dark); font-weight: 800; }
+.term-list-source { display: block; margin-top: 3px; color: var(--muted); font-size: .68rem; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; }
 .term-list dd { margin: 6px 0 0; color: var(--muted); font-size: .88rem; line-height: 1.55; }
-.understanding-block { padding: 38px 0 42px; border-bottom: 1px solid var(--line); }
 .section-label { margin: 0 0 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-size: .68rem; font-weight: 750; }
-.understanding { margin: 0; max-width: 780px; font: 1.35rem/1.65 Georgia, serif; }
 .detail-grid { display: grid; grid-template-columns: 1.4fr .8fr; gap: 60px; padding: 35px 0; }
 .detail-grid h3 { margin: 0 0 18px; font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; }

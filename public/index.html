@@ -80,17 +80,17 @@
             </div>
             <span id="nodeStatus" class="status-badge"></span>
           </div>
-          <div id="nodeDescriptionBlock" class="description-block" hidden>
-            <p class="section-label">Explanation</p>
-            <div id="nodeDescription" class="description"></div>
-          </div>
-          <section id="nodeTermsBlock" class="terms-block" aria-labelledby="nodeTermsTitle" hidden>
-            <p id="nodeTermsTitle" class="section-label">Defined terms</p>
-            <dl id="nodeTerms" class="term-list"></dl>
-          </section>
-          <div class="understanding-block">
-            <p class="section-label">Current understanding</p>
-            <p id="nodeUnderstanding" class="understanding"></p>
+          <div id="nodeContent" hidden>
+            <div class="explanation-block">
+              <p class="section-label">Explanation</p>
+              <div id="nodeExplanation" class="explanation"></div>
+            </div>
+            <section class="terms-block" aria-labelledby="nodeTermsTitle">
+              <p id="nodeTermsTitle" class="section-label">Terms</p>
+              <p class="section-note">Definitions from this concept and its ancestors.</p>
+              <p id="nodeTermsEmpty" class="empty-copy" hidden>No terms have been defined along this path yet.</p>
+              <dl id="nodeTerms" class="term-list"></dl>
+            </section>
           </div>
           <div class="detail-grid">
             <section>
@@ -115,12 +115,6 @@
           </div>
         </section>
       </main>
-    </div>
-
-    <div id="termPopover" class="term-popover" role="dialog" aria-modal="false" aria-labelledby="termPopoverLabel" hidden>
-      <button id="termPopoverClose" class="term-popover-close" type="button" aria-label="Close term definition">&times;</button>
-      <p id="termPopoverLabel" class="term-popover-label"></p>
-      <p id="termPopoverDefinition" class="term-popover-definition"></p>
     </div>
 
     <dialog id="nodeDialog" class="dialog">
@@ -159,8 +153,8 @@
           </select>
         </label>
         <label id="understandingField" hidden>
-          <span>Understanding <small>Explain the central idea in your own words.</small></span>
-          <textarea id="understandingInput" name="understanding" maxlength="2000" rows="6" placeholder="What is the main mechanism, purpose, relationship, or trade-off?"></textarea>
+          <span>Explanation <small>State the topic's essence directly, in your own words.</small></span>
+          <textarea id="understandingInput" name="understanding" maxlength="2000" rows="6" placeholder="Explain the central idea, mechanism, relationship, or trade-off."></textarea>
         </label>
         <p id="nodeFormError" class="form-error" role="alert" hidden></p>
         <div class="dialog-actions">

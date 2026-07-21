@@ -25,16 +25,15 @@ Every stored node has:
 - one primary branch;
 - either one canonical parent node or a direct position under its primary branch;
 - one status: `unassessed`, `unknown`, or `known`;
-- an understanding statement when and only when it is known;
-- an optional structured explanatory description at any status;
-- zero or more concise terms owned by the node and explicitly referenced from that description;
+- one direct explanation in the `understanding` field when and only when it is known;
+- zero or more concise terms owned by the node when and only when it is known;
 - zero or more cross-connections.
 
 Timestamps and numeric identifiers exist for persistence and API operation. They are not part of the conceptual product model.
 
-The understanding statement records the user's own conceptual model and therefore remains tied to `known` status. The description is explanatory context and may also be present on an unknown or unassessed node without claiming that the user understands it.
+The explanation records the user's conceptual model directly. It should state the topic's essence rather than metacommentary such as “I understand.” Unknown and unassessed nodes always have a null explanation and no terms.
 
-Descriptions are ordered arrays of plain-text parts and explicit local-term references, not HTML or plain text scanned for vocabulary. Each local term has a stable identifier within its node, a display label, and a concise definition. Every reference resolves within the same node, every defined term is used, and identifiers are unique within that node. A concept needing independent exploration, children, or substantial explanation belongs in the knowledge tree instead of being reduced to a local term.
+Each known-node term has a stable identifier within its node, a display label, and a concise definition. Identifiers are unique within that node. A concept needing independent exploration, children, or substantial explanation belongs in the knowledge tree instead of being reduced to a local term.
 
 ## Frontier semantics
 

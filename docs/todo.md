@@ -77,7 +77,7 @@ Define a dedicated agent contract before adding these operations to `src/agent-t
 
 ## 6. Term evolution beyond node-local definitions
 
-Status: intentionally deferred. Inline terms are currently lightweight definitions owned by one node and referenced only from that node's structured description.
+Status: intentionally deferred. Terms are currently lightweight definitions owned by one known node.
 
 Consider global term registries, aliases, and promotion of a local term into a knowledge node only after concrete usage demonstrates the need. Any future design must:
 

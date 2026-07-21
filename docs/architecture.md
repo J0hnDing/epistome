@@ -17,9 +17,9 @@ The default listener is `127.0.0.1:3000`, so the application is local-only unles
 
 ### Browser interface
 
-`public/index.html`, `public/styles.css`, `public/app.js`, and `public/inline-terms.js` render the tree and operate entirely through the JSON API. The client guides valid entry but is not trusted to enforce integrity.
+`public/index.html`, `public/styles.css`, `public/app.js`, and `public/terms.js` render the tree and operate entirely through the JSON API. The client guides valid entry but is not trusted to enforce integrity.
 
-User-authored names, understanding statements, description text, term labels, and definitions are inserted with DOM text APIs. They are never rendered as HTML. Explicit term-reference parts become native buttons; a shared accessible popover shows the matching node-local definition and supports click, focus, and Escape-to-close interaction.
+User-authored names, explanations, term labels, and definitions are inserted with DOM text APIs and are never rendered as HTML. The node detail panel renders explanation and term sections only for known nodes; unknown and unassessed nodes show their status without explanatory content.
 
 ### HTTP boundary
 
@@ -33,7 +33,7 @@ Request bodies are limited to 1 MB except complete knowledge-base imports, which
 
 `src/knowledge-base.js` is the sole write path for nodes and connections. It normalizes input and enforces tree invariants before performing SQL operations. Multi-row subtree moves use an immediate transaction.
 
-Agent establishment and update operations use the same immediate transaction for the revision comparison, understanding, description, and term update, and all requested child insertions. Newly created child specifications may contain their own validated descriptions and terms while remaining unassessed leaves. Agent operations never hold navigation state. A revision changes when the node's conceptual fields, placement, or immediate child set changes, so a stale agent view is rejected before any part of its mutation is applied.
+Agent establishment and update operations use the same immediate transaction for the revision comparison, known-node explanation and term update, and all requested child insertions. Newly created children are name-only unassessed leaves with no explanation or terms. Agent operations never hold navigation state. A revision changes when the node's conceptual fields, placement, or immediate child set changes, so a stale agent view is rejected before any part of its mutation is applied.
 
 Frontier listing is a read-only Subjects query. It joins each unknown or unassessed candidate to its immediate canonical parent and requires that parent to be known. Both rows must belong to Subjects. Results use ascending node IDs and an opaque filter-bound cursor so pagination does not require server-side session state.
 
@@ -41,7 +41,7 @@ Frontier listing is a read-only Subjects query. It joins each unknown or unasses
 
 `src/database.js` opens SQLite, enables foreign keys and write-ahead logging, and creates the current schema idempotently.
 
-The `nodes` table stores conceptual nodes. A nullable `parent_id` means direct placement under the virtual branch named by `branch`. Structured descriptions and node-owned terms are stored as validated JSON arrays in `description_json` and `terms_json`; the domain layer owns their complete cross-field contract. The `connections` table stores each undirected edge once with the smaller node ID as `source_id`.
+The `nodes` table stores conceptual nodes. A nullable `parent_id` means direct placement under the virtual branch named by `branch`. The `understanding` column stores the one direct known-node explanation, and `terms_json` stores validated terms for known nodes only. The `connections` table stores each undirected edge once with the smaller node ID as `source_id`.
 
 Database checks and unique indexes provide a second integrity layer for statuses, explanations, branches, endpoint ordering, and sibling names.
 
@@ -53,11 +53,11 @@ Database checks and unique indexes provide a second integrity layer for statuses
 
 The browser uses the native save-file picker when available so the user can choose the export folder and filename. Its fallback uses normal browser download behavior. Import requires an explicit whole-database replacement confirmation.
 
-The database opener migrates databases created before agent support by adding `revision` with an initial value of 1. It also migrates nodes created before inline terms by adding empty description and term arrays, preserving all existing node content.
+The database opener adds missing revision and term columns when needed. It rebuilds older node tables that contain the removed structured-description field, preserving known-node explanations and known-node terms while discarding descriptions and clearing terms on unknown or unassessed nodes.
 
 ## Initial taxonomy policy
 
-The two primary branches remain virtual constants assembled around stored nodes by `KnowledgeBase.getTree()`. On the first production database open, `src/initial-taxonomy.js` inserts a curated set of broad top-level Subject and Ideology nodes as unassessed leaves. It never inserts an understanding statement or known status.
+The two primary branches remain virtual constants assembled around stored nodes by `KnowledgeBase.getTree()`. On the first production database open, `src/initial-taxonomy.js` inserts a curated set of broad top-level Subject and Ideology nodes as content-free unassessed leaves. It never inserts a known status, explanation, or terms.
 
 An `app_metadata` marker makes this a one-time seed. Existing matching nodes are preserved, and a seeded node deleted or reorganized by the user is not recreated on later startups. Tests can explicitly disable the seed to exercise isolated domain scenarios against an empty tree.
 
