@@ -10,6 +10,8 @@ const state = {
   noticeTimer: null
 };
 
+let nodeHeadingFrame = null;
+
 const elements = Object.fromEntries([
   "tree", "knownCount", "frontierCount", "unassessedCount", "notice", "main",
   "welcome", "branchView", "branchName", "branchDescription", "branchRule", "nodeView",
@@ -86,6 +88,26 @@ function setTransferBusy(busy) {
 function labelStatus(status) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
+
+function fitNodeHeading() {
+  nodeHeadingFrame = null;
+  const heading = elements.nodeName;
+  heading.style.fontSize = "";
+  const availableWidth = heading.clientWidth;
+  if (!availableWidth || heading.scrollWidth <= availableWidth) return;
+
+  const preferredSize = Number.parseFloat(getComputedStyle(heading).fontSize);
+  const targetWidth = Math.max(1, availableWidth - 8);
+  const fittedSize = Math.max(16, preferredSize * targetWidth / heading.scrollWidth);
+  heading.style.fontSize = `${fittedSize.toFixed(2)}px`;
+}
+
+function scheduleNodeHeadingFit() {
+  if (nodeHeadingFrame !== null) cancelAnimationFrame(nodeHeadingFrame);
+  nodeHeadingFrame = requestAnimationFrame(fitNodeHeading);
+}
+
+window.addEventListener("resize", scheduleNodeHeadingFit);
 
 function makeDisclosureButton({ label, expanded, controls, onToggle }) {
   const button = document.createElement("button");
@@ -320,6 +342,7 @@ async function selectNode(id) {
     revealNode(id);
     elements.nodePath.textContent = pathFor(node);
     elements.nodeName.textContent = node.name;
+    elements.nodeName.title = node.name;
     elements.nodeStatus.textContent = labelStatus(node.status);
     elements.nodeStatus.className = `status-badge ${node.status}`;
     renderKnownContent(node);
@@ -328,6 +351,7 @@ async function selectNode(id) {
     elements.addChildButton.hidden = node.status !== "known";
     renderConnections(node);
     showOnly(elements.nodeView);
+    scheduleNodeHeadingFit();
     renderTree();
   } catch (error) {
     showNotice(error.message, true);

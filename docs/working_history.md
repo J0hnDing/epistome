@@ -1,5 +1,10 @@
 # Working history
 
+## 2026-07-21 — Single-line adaptive node headlines
+
+- Gave selected-node headlines a full-width detail row and dynamically reduced their rendered font size only when needed to remain on one line.
+- Refit headlines when the viewport changes, retained the normal large type for shorter names, and exposed the full node name as a native title when extreme lengths require truncation.
+
 ## 2026-07-21 — Clear knowledge while preserving the base taxonomy
 
 - Added an atomic browser-only clear operation that removes all non-base concepts and cross-connections while restoring the approved Subject and Ideology taxonomy as content-free unassessed leaves.
