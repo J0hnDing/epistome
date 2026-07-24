@@ -1,27 +1,13 @@
-## 2026-07-17 00:00 — Epistome project rename
+# Working history
 
-- Category: refactor
-- Related TODOs: none
-- Area: unknown
-
-### Summary
+## 2026-07-17 — Epistome project rename
 
 - Renamed the product, browser title, package, server output, agent discovery guide, and OpenAPI identity to Epistome.
 - Renamed exported backup files and the canonical versioned export identifier to `epistome`.
 - Preserved import compatibility with version 1 backups that use the earlier project identifier.
 - Kept knowledge-domain terminology and stable REST paths unchanged.
 
-### Limitations
-
-none
-
-## 2026-07-17 00:00 — Versioned full export and import
-
-- Category: feature
-- Related TODOs: none
-- Area: unknown
-
-### Summary
+## 2026-07-17 — Versioned full export and import
 
 - Added a portable JSON export format with an explicit format identifier and version.
 - Included all persisted nodes, connections, IDs, revisions, timestamps, and application metadata while leaving the two virtual roots implicit.
@@ -30,17 +16,7 @@ none
 - Added browser Export and Import controls with a native save-location picker where available, standard download fallback, file-size guard, and destructive replacement confirmation.
 - Documented the browser REST contract and deferred a separately authorized agent import/export contract to the todo list.
 
-### Limitations
-
-none
-
-## 2026-07-17 00:00 — Initial broad knowledge taxonomy
-
-- Category: feature
-- Related TODOs: none
-- Area: unknown
-
-### Summary
+## 2026-07-17 — Initial broad knowledge taxonomy
 
 - Added 33 common, objective Subject starting points spanning formal, natural, technical, human, historical, linguistic, creative, and applied knowledge.
 - Added 17 broad Ideology starting points including Politics, Ethics, Metaphysics, Epistemology, mind, meaning, religion, society, law, science, technology, and worldview.
@@ -49,17 +25,7 @@ none
 - Made seeding one-time and idempotent through database metadata; existing matching nodes are preserved and deleted seed nodes do not reappear.
 - Updated the initial UI state, product model, architecture, agent guidance, contributor rules, and tests for the new starting taxonomy.
 
-### Limitations
-
-none
-
-## 2026-07-17 00:00 — Subject frontier listing API
-
-- Category: feature
-- Related TODOs: none
-- Area: unknown
-
-### Summary
+## 2026-07-17 — Subject frontier listing API
 
 - Added stateless `list_frontier_nodes` discovery for unknown or unassessed Subject nodes whose immediate canonical parent is known.
 - Restricted the operation structurally to Subjects; Ideology nodes and virtual-root placeholders cannot appear.
@@ -67,17 +33,7 @@ none
 - Added tool-catalog, project-guide, OpenAPI, agent-guide, and contributor-policy descriptions that state the frontier definition and Subjects-only boundary.
 - Added domain, discovery-contract, and mock-agent HTTP tests for eligibility, exclusion, filtering, pagination, and Ideology-parent rejection.
 
-### Limitations
-
-none
-
-## 2026-07-17 00:00 — Agent discovery and API specification
-
-- Category: feature
-- Related TODOs: none
-- Area: unknown
-
-### Summary
+## 2026-07-17 — Agent discovery and API specification
 
 - Added an authoritative OpenAPI 3.1 document at `GET /api/openapi.json` covering discovery resources and the then-current agent operations, including request, response, and error schemas.
 - Added a machine-readable project and workflow guide at `GET /api/agent/guide` covering the project's purpose, roots, statuses, understanding policy, stateless workflow, and mutation limits.
@@ -85,17 +41,7 @@ none
 - Defined the child expansion boundary explicitly: immediate major conceptual subdivisions only, created as unassessed leaves; no grandchildren, exhaustive external taxonomies, facts, examples, sources, or implementation details; empty child lists remain valid.
 - Added discovery contract tests that protect the OpenAPI paths, schema references, descriptions, guide content, and expansion-boundary wording.
 
-### Limitations
-
-none
-
-## 2026-07-17 00:00 — Stateless AI agent API
-
-- Category: feature
-- Related TODOs: none
-- Area: unknown
-
-### Summary
+## 2026-07-17 — Stateless AI agent API
 
 - Added explicit-ID `search_knowledge`, `get_knowledge_node`, `establish_known_node`, and `update_known_node` HTTP operations plus a machine-readable tool catalog.
 - Added compact search responses, bounded node reads, canonical paths, subtree search scoping, and no server-side navigation state.
@@ -104,17 +50,7 @@ none
 - Ensured human child creation and deletion also advance the parent's revision so agent concurrency checks cover structural changes outside the agent endpoints.
 - Added domain contract tests and a mock agent end-to-end program that searches, inspects, establishes, expands, updates, and tests stale-write and frontier failures over HTTP without invoking an external agent runtime.
 
-### Limitations
-
-none
-
-## 2026-07-17 00:00 — Initial base system
-
-- Category: feature
-- Related TODOs: none
-- Area: unknown
-
-### Summary
+## 2026-07-17 — Initial base system
 
 - Established a dependency-free Node.js application with a local HTTP server and SQLite persistence.
 - Implemented virtual Subjects and Ideologies roots so a fresh database contains no knowledge.
@@ -124,21 +60,3 @@ none
 - Built a responsive browser interface with an empty state, tree navigation, status summary, node forms, connections, and structural metadata.
 - Added domain and HTTP contract tests plus syntax and full-check scripts.
 - Documented the product model, architecture, API, contributor rules, operating steps, and current scope.
-
-### Limitations
-
-none
-
-## 2026-07-24 16:07 — Structural and design code audit
-
-- Category: research
-- Related TODOs: none
-- Area: architecture
-
-### Summary
-
-Audited the domain, SQLite schema and migrations, HTTP boundary, browser client, agent discovery contract, documentation, and tests. Confirmed three concrete edge cases outside the current suite: split UTF-8 request chunks can corrupt stored text; JavaScript and SQLite use inconsistent Unicode case normalization for sibling uniqueness, allowing a database that its own import validator rejects; and browser PATCH accepts malformed or empty objects, producing a 500 for null and advancing revisions for no-op updates. Identified follow-on design improvements around shared command validation, one canonical sibling key, buffered request decoding, shared agent contract metadata, versioned migrations, and splitting pure transfer validation from the KnowledgeBase facade.
-
-### Limitations
-
-No implementation code was changed. npm run check passes all 40 tests. The audited local main checkout is five commits behind origin/main and already had unrelated Projector-managed file changes; those were preserved. The three concrete defect patterns were spot-checked and still exist on origin/main.

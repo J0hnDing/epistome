@@ -1,76 +1,142 @@
-# Todo
+## TODO-001: Tree-reorganization APIs
 
-This file tracks approved capabilities that remain unfinished. New work should preserve the REST domain contract, tree invariants, explicit-node navigation, optimistic revisions, and the rule that the knowledge base represents the user's understanding rather than an external ontology.
+- Status: planned
+- Priority: medium
+- Area: agent-domain
+- Dependencies: TODO-003, TODO-012
+- Rationale: Human-facing APIs can rename and move nodes, but agents are intentionally prohibited from restructuring. Any future agent reorganization surface needs explicit operation semantics, complete invariant previews, and revision-safe atomic changes rather than a generic patch endpoint.
 
-## 1. Tree-reorganization APIs
+-Acceptance Criteria:
+Define separate previewable contracts for rename, move, merge, and split; require current revisions for every affected bounded view or placement; preserve branch, frontier, canonical-parent, and known-ancestor invariants; make destructive or identity-changing consequences explicit; apply each accepted operation atomically; publish aligned tool, OpenAPI, guide, error, and test coverage.
 
-Status: not implemented for agents. The human-facing node API can currently rename and move nodes, but agents are intentionally prohibited from restructuring the tree and have no dedicated reorganization contract.
+## TODO-002: Auditability and bounded revert
 
-Add explicit, revision-safe APIs for approved structural operations such as renaming a node, moving a subtree, and resolving duplicate or overlapping concepts. The contract should:
+- Status: planned
+- Priority: medium
+- Area: audit-persistence
+- Dependencies: TODO-006
+- Rationale: Revisions provide concurrency control but do not explain who changed the tree, which operation caused a mutation, or what prior state was replaced. Destructive and multi-node agent capabilities should not expand without a durable audit foundation.
 
-- preview the affected canonical paths and invariant consequences before applying a change;
-- require current revisions for every node whose bounded view or placement may change;
-- preserve the Subjects/Ideologies classification policy and known-ancestor frontier rules;
-- distinguish rename, move, merge, and split operations instead of hiding them inside a general patch;
-- make destructive or identity-changing consequences explicit;
-- apply each accepted reorganization atomically;
-- remain fully represented in the OpenAPI specification and agent guide.
+-Acceptance Criteria:
+Record every agent call and tree mutation in append-only history with operation, actor or integration, correlation ID, timestamp, targets, outcome, and sufficient before/after state; treat one atomic multi-node mutation as one audit step; define retention, privacy, and storage-growth policies; design bounded revert to preserve audit history, detect dependent later changes, and refuse unsafe inversions.
 
-## 2. Auditability and bounded revert
+## TODO-003: API error contract
 
-Status: not implemented. Node revisions provide concurrency control but do not record who made a change, which API call caused it, or what the prior tree state was.
+- Status: planned
+- Priority: medium
+- Area: api-contract
+- Dependencies: none
+- Rationale: The server has a stable error envelope and OpenAPI error schema, but public error codes, details, retry meaning, and remediation remain distributed across implementation, tests, and prose.
 
-Record every agent call and every resulting tree mutation in an append-only audit history. Each record should identify the operation, actor or integration, request/correlation ID, timestamp, target node IDs, outcome, and sufficient before/after state to explain the change.
+-Acceptance Criteria:
+Create one authoritative registry for every public REST and agent error code, including HTTP status, applicable operations, machine meaning, retry policy, caller remediation, required details, and exposure safety; generate or validate OpenAPI and human documentation from it; add conformance tests for status, code, details, and retry guidance.
 
-Investigate a bounded revert capability that can safely reverse a configurable number of recent mutation steps. Revert behavior must:
+## TODO-004: MCP adapter
 
-- preserve the audit record rather than deleting history;
-- detect later dependent changes and refuse or require explicit resolution when a clean inverse is unsafe;
-- restore node identity, placement, status, understanding, and immediate-child effects consistently;
-- treat a multi-node atomic mutation as one revertable step;
-- define retention, privacy, and storage-growth policies before implementation.
+- Status: planned
+- Priority: low
+- Area: integrations
+- Dependencies: TODO-003, TODO-012
+- Rationale: MCP support is useful only as a compatibility layer over the mature REST agent contract. Implementing it before contract metadata and errors are single-sourced would create a second schema and behavior authority.
 
-## 3. API error contract
+-Acceptance Criteria:
+Map MCP tools directly to existing agent REST operations; derive names, descriptions, input schemas, and error semantics from the shared contract; contain no independent domain, validation, persistence, revision, or navigation state; preserve explicit node IDs; prove REST/MCP parity for equivalent successful calls and failures.
 
-Status: partially implemented. The server has a stable `{ "error": { "code", "message", "details" } }` envelope and OpenAPI error schemas, but it does not yet publish a complete error-code contract.
+## TODO-005: Agent export and import APIs
 
-Create one authoritative registry for every public REST and agent error code. For each code, define:
+- Status: planned
+- Priority: medium
+- Area: agent-api
+- Dependencies: TODO-002, TODO-003, TODO-012
+- Rationale: Complete export and atomic replacement already exist for the browser, but exposing them to agents crosses the normal bounded-read policy and introduces a destructive whole-database operation requiring explicit authorization and auditability.
 
-- HTTP status and applicable operations;
-- stable machine meaning;
-- whether retrying unchanged is safe, unsafe, or pointless;
-- the expected agent remediation, such as rereading after `stale_revision`;
-- the shape and required fields of `details`;
-- whether the error is safe to expose without leaking local data.
+-Acceptance Criteria:
+Define separate read-only export and destructive import operations; require explicit user authorization immediately before import; preserve the existing versioned snapshot and complete pre-mutation validation; retain atomic replacement; avoid agent-controlled server file paths; publish stable count, format, version, and error results; integrate the initiating request and outcome with audit history; keep the workflow stateless.
 
-Generate or validate OpenAPI error responses and human documentation from that registry so runtime behavior, tests, and documentation cannot drift. Add conformance tests for status, code, details, and retry guidance.
+## TODO-006: Introduce versioned database migrations
 
-## 4. MCP adapter
+- Status: planned
+- Priority: medium
+- Area: persistence
+- Dependencies: none
+- Rationale: Database evolution currently relies on one-off column inspection. As schema changes accumulate, ordering, rollback, and compatibility become harder to reason about and test.
 
-Status: not implemented.
+-Acceptance Criteria:
+Store an explicit schema version; apply each migration exactly once in a transaction; preserve supported existing databases; fail safely without partial schema changes; cover fresh, current, and representative legacy databases with tests.
 
-Add an MCP adapter only as a thin compatibility layer over the existing REST contract. It must not become a second source of truth for validation, schemas, descriptions, revisions, errors, or tree behavior.
+## TODO-007: Preserve UTF-8 across chunked JSON requests
 
-The adapter should:
+- Status: planned
+- Priority: high
+- Area: http-boundary
+- Dependencies: none
+- Rationale: The request reader currently coerces each byte chunk to text independently. A multibyte character split across chunks is silently replaced, corrupting names, understandings, and imported snapshots.
 
-- map MCP tools directly to the existing agent REST operations;
-- derive tool names, descriptions, and input schemas from the same contract metadata where practical;
-- return REST-equivalent response and error semantics;
-- contain no independent knowledge-domain or persistence logic;
-- be covered by parity tests showing that equivalent MCP and REST calls produce equivalent results;
-- preserve explicit node IDs and never introduce session-level `current_node` state.
+-Acceptance Criteria:
+Accumulate bounded request bytes and decode UTF-8 once; reject oversized Content-Length values early while retaining streamed size enforcement; preserve valid multibyte text across arbitrary chunk boundaries; add HTTP tests that deliberately split a character between chunks.
 
-## 5. Agent export and import APIs
+## TODO-008: Unify Unicode sibling-name uniqueness
 
-Status: not implemented for agents. Complete versioned export and atomic whole-database import are currently available only through the browser-oriented REST endpoints and UI.
+- Status: planned
+- Priority: high
+- Area: domain-persistence
+- Dependencies: TODO-006
+- Rationale: SQLite lower(name) and JavaScript locale lowercasing disagree outside ASCII. The database can accept sibling names that the export validator treats as duplicates, making an Epistome export impossible to re-import.
 
-Define a dedicated agent contract before adding these operations to `src/agent-tools.js` or the agent OpenAPI surface. The contract should:
+-Acceptance Criteria:
+Define one documented normalization and case-folding function; persist and uniquely index its canonical sibling key; use the same function for writes, agent child reuse, and import validation; migrate existing data with an explicit collision policy; cover non-ASCII and normalization-equivalent names plus export/re-import round trips.
 
-- distinguish read-only export from destructive whole-database import;
-- require explicit user authorization immediately before an agent import;
-- preserve the existing versioned file format rather than creating an agent-specific snapshot format;
-- define how a complete export is transferred without violating the normal bounded-read policy;
-- validate the whole file before mutation and retain atomic replacement semantics;
-- report imported counts and stable format/version errors;
-- integrate with the planned audit history so the initiating agent call and replacement outcome are recorded;
-- remain stateless and avoid server-side file paths or agent-controlled arbitrary filesystem writes.
+## TODO-009: Harden browser node command validation and no-op revisions
+
+- Status: planned
+- Priority: medium
+- Area: domain-api
+- Dependencies: none
+- Rationale: Human-facing node writes accept malformed or unsupported command shapes inconsistently. PATCH null becomes a 500 and an empty or semantically unchanged patch advances the revision despite no conceptual change.
+
+-Acceptance Criteria:
+Require plain-object command bodies; reject unsupported fields with stable 400 errors; preserve omitted-field PATCH semantics; avoid writes, timestamps, and revision increments when normalized state is unchanged; add domain and HTTP tests for null, arrays, unknown fields, empty patches, equivalent normalized values, and actual changes.
+
+## TODO-010: Make deep-tree validation and assembly iterative
+
+- Status: planned
+- Priority: low
+- Area: knowledge-transfer
+- Dependencies: none
+- Rationale: Recursive import validation and tree assembly depend on the JavaScript call stack. A structurally valid deep snapshot within the import size limit can raise RangeError instead of receiving deterministic validation or import behavior.
+
+-Acceptance Criteria:
+Replace depth-dependent recursive traversal in import ordering and server-side tree assembly with iterative algorithms; preserve cycle detection and canonical order; define a practical supported-depth policy if any limit remains; add deep valid-chain and deep-cycle tests that do not overflow the process stack.
+
+## TODO-011: Extract a cohesive knowledge-transfer collaborator
+
+- Status: planned
+- Priority: medium
+- Area: architecture
+- Dependencies: none
+- Rationale: KnowledgeBase currently combines tree mutations, agent queries, export validation, and snapshot replacement in one large implementation. Transfer rules form a cohesive boundary that can be isolated without weakening domain ownership.
+
+-Acceptance Criteria:
+Keep KnowledgeBase as the authoritative domain facade; extract pure snapshot parsing, validation, and ordering behind a narrow internal interface; keep transactional replacement owned by the domain layer; preserve all import/export behavior; add focused transfer tests without duplicating invariants.
+
+## TODO-012: Single-source agent operation contract metadata
+
+- Status: planned
+- Priority: medium
+- Area: agent-api
+- Dependencies: TODO-003
+- Rationale: Agent tool schemas, OpenAPI schemas, route paths, and descriptions are maintained separately. Existing tests check selected alignment but do not prevent all semantic drift.
+
+-Acceptance Criteria:
+Define one operation registry for names, methods, paths, input schemas, and shared descriptions; generate or validate the tool catalog and OpenAPI surface from it; keep handlers explicit and domain-free; include the authoritative error registry from TODO-003; add full parity tests for every published operation.
+
+## TODO-013: Consolidate browser knowledge snapshot reads
+
+- Status: planned
+- Priority: low
+- Area: browser
+- Dependencies: none
+- Rationale: Each browser refresh downloads both the complete nested tree and a complete flat node list. The duplicated full reads add database work, transfer cost, and a potential consistency seam as the knowledge base grows.
+
+-Acceptance Criteria:
+Provide or derive one coherent browser read model per refresh; retain tree rendering, summary counts, paths, and parent-choice behavior; ensure one refresh cannot combine different logical snapshots; add focused client or HTTP contract tests for the consolidated payload.
