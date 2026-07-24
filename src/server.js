@@ -121,6 +121,9 @@ export function createApp({
         const snapshot = await readJson(request, { maxLength: 50 * 1024 * 1024 });
         return sendJson(response, 200, { imported: knowledgeBase.importKnowledgeBase(snapshot) });
       }
+      if (method === "POST" && pathname === "/api/clear") {
+        return sendJson(response, 200, { cleared: knowledgeBase.clearKnowledge() });
+      }
       if (method === "GET" && pathname === "/api/nodes") {
         return sendJson(response, 200, { nodes: knowledgeBase.listNodes() });
       }

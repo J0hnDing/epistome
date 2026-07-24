@@ -103,9 +103,19 @@ describe("mock AI agent over HTTP", () => {
       node_id: inspected.id,
       expected_revision: inspected.revision,
       understanding: "Systems learn behaviour or patterns from data.",
-      children: ["Supervised Learning", "Unsupervised Learning", "Reinforcement Learning"]
+      terms: [{
+        id: "training-data",
+        label: "training data",
+        definition: "Examples used to adjust or select a model."
+      }],
+      children: [
+        "Supervised Learning",
+        "Unsupervised Learning",
+        "Reinforcement Learning"
+      ]
     });
     assert.equal(established.node.revision, 2);
+    assert.equal(established.node.terms[0].id, "training-data");
     assert.deepEqual(established.children_created, [
       "Supervised Learning", "Unsupervised Learning", "Reinforcement Learning"
     ]);
@@ -128,6 +138,7 @@ describe("mock AI agent over HTTP", () => {
 
     const expanded = await agent.call("get_knowledge_node", { node_id: inspected.id });
     assert.equal(expanded.status, "known");
+    assert.equal(expanded.terms[0].definition, "Examples used to adjust or select a model.");
     assert.equal(expanded.children.length, 3);
     assert.ok(expanded.children.every((child) => child.status === "unassessed"));
 
@@ -140,14 +151,22 @@ describe("mock AI agent over HTTP", () => {
     const child = await agent.call("get_knowledge_node", { node_id: childSearch.results[0].id });
     assert.deepEqual(child.path, ["Subjects", "Machine Learning", "Reinforcement Learning"]);
     assert.equal(child.parent.id, expanded.id);
+    assert.equal(child.understanding, null);
+    assert.deepEqual(child.terms, []);
 
     const knownLeaf = await agent.call("establish_known_node", {
       node_id: child.id,
       expected_revision: child.revision,
       understanding: "An agent learns actions through feedback from an environment.",
+      terms: [{
+        id: "rewards",
+        label: "rewards",
+        definition: "Feedback signals indicating the desirability of outcomes."
+      }],
       children: []
     });
     assert.equal(knownLeaf.node.status, "known");
+    assert.equal(knownLeaf.node.terms[0].id, "rewards");
 
     // Establishing the child changed its status in the parent's bounded view.
     const refreshedParent = await agent.call("get_knowledge_node", { node_id: expanded.id });
@@ -157,9 +176,15 @@ describe("mock AI agent over HTTP", () => {
       node_id: refreshedParent.id,
       expected_revision: refreshedParent.revision,
       understanding: "Systems infer useful behaviour or patterns from data and feedback.",
+      terms: [{
+        id: "feedback",
+        label: "feedback",
+        definition: "Information used to improve later predictions or actions."
+      }],
       children_to_add: ["Self-Supervised Learning", "Supervised Learning"]
     });
     assert.equal(updated.node.revision, 4);
+    assert.equal(updated.node.terms[0].id, "feedback");
     assert.deepEqual(updated.children_created, ["Self-Supervised Learning"]);
     assert.deepEqual(updated.children_existing, ["Supervised Learning"]);
 
@@ -168,6 +193,7 @@ describe("mock AI agent over HTTP", () => {
         node_id: refreshedParent.id,
         expected_revision: refreshedParent.revision,
         understanding: "A stale change that must not be applied.",
+        terms: [{ id: "stale-term", label: "stale term", definition: "Must not be stored." }],
         children_to_add: ["Leaked Stale Child"]
       }),
       (error) => error.status === 409 && error.code === "stale_revision"
@@ -176,7 +202,21 @@ describe("mock AI agent over HTTP", () => {
     const finalNode = await agent.call("get_knowledge_node", { node_id: expanded.id });
     assert.equal(finalNode.revision, 4);
     assert.equal(finalNode.understanding, updated.node.understanding);
+    assert.deepEqual(finalNode.terms, updated.node.terms);
     assert.equal(finalNode.children.some((candidate) => candidate.name === "Leaked Stale Child"), false);
+
+    const generatedChildSearch = await agent.call("search_knowledge", {
+      query: "self-supervised learning",
+      parent_id: finalNode.id,
+      branch: "subjects",
+      limit: 1
+    });
+    const generatedChild = await agent.call("get_knowledge_node", {
+      node_id: generatedChildSearch.results[0].id
+    });
+    assert.equal(generatedChild.status, "unassessed");
+    assert.equal(generatedChild.understanding, null);
+    assert.deepEqual(generatedChild.terms, []);
   });
 
   test("cannot add children through update_known_node beneath a non-known node", async () => {
@@ -200,5 +240,32 @@ describe("mock AI agent over HTTP", () => {
     const unchanged = await agent.call("get_knowledge_node", { node_id: seeded.output.node.id });
     assert.equal(unchanged.status, "unassessed");
     assert.deepEqual(unchanged.children, []);
+  });
+
+  test("rejects explanatory child objects without changing the node", async () => {
+    const seeded = await rawRequest("/api/nodes", {
+      name: "Name-only Boundary",
+      branch: "subjects",
+      status: "unassessed"
+    });
+    const agent = new MockKnowledgeAgent(baseUrl);
+
+    await assert.rejects(
+      agent.call("establish_known_node", {
+        node_id: seeded.output.node.id,
+        expected_revision: seeded.output.node.revision,
+        understanding: "This understanding must not be committed.",
+        children: [{ name: "Forbidden Content", terms: [] }]
+      }),
+      (error) => error.status === 400 && error.code === "invalid_child"
+    );
+
+    const unchanged = await agent.call("get_knowledge_node", {
+      node_id: seeded.output.node.id
+    });
+    assert.equal(unchanged.revision, seeded.output.node.revision);
+    assert.equal(unchanged.status, "unassessed");
+    assert.equal(unchanged.understanding, null);
+    assert.deepEqual(unchanged.terms, []);
   });
 });

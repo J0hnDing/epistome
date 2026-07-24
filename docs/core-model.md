@@ -25,10 +25,15 @@ Every stored node has:
 - one primary branch;
 - either one canonical parent node or a direct position under its primary branch;
 - one status: `unassessed`, `unknown`, or `known`;
-- an understanding statement when and only when it is known;
+- one direct explanation in the `understanding` field when and only when it is known;
+- zero or more concise terms owned by the node when and only when it is known;
 - zero or more cross-connections.
 
 Timestamps and numeric identifiers exist for persistence and API operation. They are not part of the conceptual product model.
+
+The explanation records the user's conceptual model directly. It should state the topic's essence rather than metacommentary such as “I understand.” Unknown and unassessed nodes always have a null explanation and no terms.
+
+Each known-node term has a stable identifier within its node, a display label, and a concise definition. Identifiers are unique within that node. A concept needing independent exploration, children, or substantial explanation belongs in the knowledge tree instead of being reduced to a local term.
 
 ## Frontier semantics
 
@@ -53,3 +58,5 @@ No relationship type is stored in the base system. Typed edges are an optional f
 ## Deletion
 
 Deletion is intentionally conservative. A node with children cannot be deleted until its children are moved or deleted. This prevents an ordinary delete action from silently removing a complete area of the user's conceptual map.
+
+The separate browser-only clear operation is explicitly destructive. It atomically removes every non-base node and cross-connection, restores the approved initial taxonomy as top-level unassessed leaves with no explanations or terms, and preserves application metadata. This bulk reset is not an agent operation.

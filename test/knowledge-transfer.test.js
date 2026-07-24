@@ -33,7 +33,13 @@ function known(kb, name, branch = "subjects", parentId = null) {
 describe("versioned knowledge transfer", () => {
   test("exports and atomically restores the complete persisted knowledge base", () => {
     const kb = createKnowledgeBase();
-    const child = known(kb, "Child created first");
+    const child = kb.createNode({
+      name: "Child created first",
+      branch: "subjects",
+      status: "known",
+      understanding: "Child created first is understood conceptually.",
+      terms: [{ id: "local-term", label: "Local term", definition: "A contextual definition." }]
+    });
     const parent = known(kb, "Parent created second");
     kb.updateNode(child.id, { parentId: parent.id });
     const ideology = known(kb, "Ethics", "ideologies");
@@ -45,6 +51,7 @@ describe("versioned knowledge transfer", () => {
     assert.equal(exported.format, KNOWLEDGE_EXPORT_FORMAT);
     assert.equal(exported.format_version, KNOWLEDGE_EXPORT_VERSION);
     assert.equal(exported.data.nodes.length, 3);
+    assert.equal(exported.data.nodes.some((node) => "description" in node), false);
     assert.equal(exported.data.connections.length, 1);
     assert.deepEqual(exported.data.metadata, [{ key: "test_marker", value: "preserved" }]);
 
@@ -77,18 +84,19 @@ describe("versioned knowledge transfer", () => {
     assert.deepEqual(kb.exportKnowledgeBase().data, before.data);
   });
 
-  test("imports version 1 files that use the pre-Epistome format identifier", () => {
+  test("rejects older formats and versions", () => {
     const kb = createKnowledgeBase();
     known(kb, "Mathematics");
     const legacy = kb.exportKnowledgeBase();
     legacy.format = "the-modeled-knowledge-base";
+    legacy.format_version = 1;
 
-    kb.createNode({ name: "Temporary", branch: "subjects", status: "unassessed" });
-    const result = kb.importKnowledgeBase(legacy);
-
-    assert.equal(result.nodes_imported, 1);
+    assert.throws(() => kb.importKnowledgeBase(legacy), (error) => {
+      assert.ok(error instanceof AppError);
+      assert.equal(error.code, "invalid_export_format");
+      return true;
+    });
     assert.deepEqual(kb.listNodes().map((node) => node.name), ["Mathematics"]);
-    assert.equal(kb.exportKnowledgeBase().format, KNOWLEDGE_EXPORT_FORMAT);
   });
 
   test("rejects an invalid tree before replacing the current data", () => {

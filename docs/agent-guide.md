@@ -35,9 +35,17 @@ Every node has one canonical parent. A child is a conceptual narrowing: a subfie
 
 Known does not mean complete mastery, expert ability, agreement, perfect recall, or proof of correctness.
 
-## Write an understanding statement
+## Write the known-node explanation
 
-Capture the user's concise conceptual explanation. Prefer the central mechanism, main purpose, important relationship, key trade-off, major insight, or defining assumption. Do not paste a textbook definition or substitute a formula, constant, example, or isolated fact for conceptual understanding.
+Capture one direct explanation of the topic's essence in `understanding`. Prefer the central mechanism, main purpose, important relationship, key trade-off, major insight, or defining assumption. Do not write metacommentary such as “I understand,” paste a textbook definition, or substitute a formula, constant, example, or isolated fact for conceptual understanding.
+
+Unknown and unassessed nodes always have a null explanation. Do not add explanatory context to them.
+
+## Add known-node terms
+
+Terms are optional concise `{ id, label, definition }` records owned by a known node. Unknown and unassessed nodes always have an empty term list. Never submit HTML.
+
+Use a local term only for essential vocabulary needed to understand the current node's own explanation. IDs must be unique within that node. A term must be owned by the current node: never define an immediate child, a proposed child, or vocabulary whose explanation belongs to a narrower descendant. If a concept is or should become a child, omit it from the parent's terms; after explicitly establishing that child as known, define only vocabulary central to the child's own explanation. Terms are not a second child list, topic outline, or exhaustive glossary.
 
 ## Respect the expansion boundary
 
@@ -45,7 +53,7 @@ Expansion stops at the requested node's immediate children.
 
 Add only children that are major conceptual subdivisions through which the user currently organizes the known parent. A subdivision should clarify the user's model, distinguish meaningfully different mechanisms, or expose a useful knowledge frontier.
 
-Every newly created child is unassessed and remains a leaf. To expand it, the agent must later search or read that explicit child ID, establish it as known with a fresh revision, and apply the boundary again.
+Every newly created child is a name-only unassessed leaf with no explanation or terms. Child arrays accept strings only. To add content or expand a child, the agent must later search or read that explicit child ID, establish it as known with a fresh revision, and apply the boundary again.
 
 Do not add:
 
@@ -69,4 +77,4 @@ Use `children: []` or `children_to_add: []` when no useful decomposition exists.
 
 The frontier-list operation is deliberately narrower than the general tree: it is restricted to Subjects. A null parent filter means all known Subject parents. Direct children of the virtual Subjects root are not frontier nodes because that virtual root is not itself a known node.
 
-Agent mutations may update an understanding and add immediate unassessed children. They cannot delete, rename, move, merge, recategorize, or replace nodes or children. Existing matching children are reused. Each mutation is atomic.
+Agent mutations may update one known-node explanation and local terms and may add name-only immediate unassessed children. They cannot delete, rename, move, merge, recategorize, replace nodes or children, or attach content to a new child. Existing matching children are reused unchanged. Each mutation is atomic.

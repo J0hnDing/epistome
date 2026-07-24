@@ -6,7 +6,7 @@ All API responses use JSON except successful deletes, which return no body. Erro
 {
   "error": {
     "code": "understanding_required",
-    "message": "A known node must include a meaningful understanding statement."
+    "message": "A known node must include a direct explanation of the topic's essence."
   }
 }
 ```
@@ -34,7 +34,7 @@ Returns the two virtual primary branches and their recursively nested nodes:
 
 ### `GET /api/nodes`
 
-Returns a flat, name-sorted list of every stored node. The browser uses it for counts and placement controls. Each node includes its current positive integer `revision`.
+Returns a flat, name-sorted list of every stored node. The browser uses it for counts and placement controls. Each node includes its current positive integer `revision`, known-only `understanding`, and node-local `terms`.
 
 ### `GET /api/nodes/:id`
 
@@ -51,7 +51,7 @@ Returns a complete portable JSON snapshot:
 ```json
 {
   "format": "epistome",
-  "format_version": 1,
+  "format_version": 3,
   "exported_at": "2026-07-17T20:00:00.000Z",
   "data": {
     "nodes": [],
@@ -61,7 +61,7 @@ Returns a complete portable JSON snapshot:
 }
 ```
 
-Nodes retain `id`, `name`, `branch`, `parentId`, `status`, `understanding`, `revision`, `createdAt`, and `updatedAt`. Connections retain `id`, `sourceId`, `targetId`, and `createdAt`. Application metadata is represented as `key` and `value` entries. The two virtual roots are structural constants and are not exported as nodes.
+Nodes retain `id`, `name`, `branch`, `parentId`, `status`, `understanding`, `terms`, `revision`, `createdAt`, and `updatedAt`. Connections retain `id`, `sourceId`, `targetId`, and `createdAt`. Application metadata is represented as `key` and `value` entries. The two virtual roots are structural constants and are not exported as nodes.
 
 ### `POST /api/import`
 
@@ -70,7 +70,7 @@ Accepts one complete export document, up to 50 MB, and replaces all current node
 ```json
 {
   "imported": {
-    "format_version": 1,
+    "format_version": 3,
     "nodes_imported": 50,
     "connections_imported": 3
   }
@@ -79,7 +79,29 @@ Accepts one complete export document, up to 50 MB, and replaces all current node
 
 Import preserves exported identities and timestamps. The server rejects unknown formats, unsupported versions, malformed records, invalid hierarchies, and invalid connections before mutation. Replacement is atomic: a rejected or failed import does not partially clear or populate the current database.
 
-Epistome emits `format: "epistome"`. For rename compatibility, version 1 imports also accept the earlier `format: "the-modeled-knowledge-base"` identifier; subsequent exports always use the Epistome identifier.
+Epistome emits and accepts version 3 with `format: "epistome"`. Older versions are intentionally unsupported.
+
+## Clear knowledge
+
+This is a browser-oriented destructive operation and is not exposed in the agent tool catalog.
+
+### `POST /api/clear`
+
+Atomically removes every non-base concept and all cross-connections. Approved initial taxonomy entries remain at their existing IDs when they are still in their original top-level location, are reset to content-free `unassessed` leaves, and any missing or reorganized base entries are recreated. Application metadata is preserved.
+
+The response reports the applied changes:
+
+```json
+{
+  "cleared": {
+    "nodes_deleted": 12,
+    "connections_deleted": 3,
+    "base_nodes_preserved": 48,
+    "base_nodes_reset": 7,
+    "base_nodes_created": 2
+  }
+}
+```
 
 ## Node writes
 
@@ -93,11 +115,20 @@ Creates a node. Example body:
   "branch": "subjects",
   "parentId": null,
   "status": "known",
-  "understanding": "A concise explanation in the user's own words."
+  "understanding": "A direct explanation of the topic's essence in the user's own words.",
+  "terms": [
+    {
+      "id": "weights",
+      "label": "weights",
+      "definition": "Learned numeric parameters controlling how inputs affect an output."
+    }
+  ]
 }
 ```
 
-`branch` is `subjects` or `ideologies`. `status` is `unassessed`, `unknown`, or `known`. `parentId` is null for direct placement under a primary branch. A known status requires `understanding`; other statuses store it as null.
+`branch` is `subjects` or `ideologies`. `status` is `unassessed`, `unknown`, or `known`. `parentId` is null for direct placement under a primary branch. A known status requires one direct explanation in `understanding`; other statuses store it as null and must have empty `terms`.
+
+`terms` contains at most 20 node-local `{ id, label, definition }` records on a known node. Term IDs use lowercase letters, digits, and hyphens, are unique within the node, and must begin with a letter. Empty arrays are valid. The removed `description` field is rejected.
 
 ### `PATCH /api/nodes/:id`
 

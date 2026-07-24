@@ -18,13 +18,14 @@ Knowledge
 
 `Subjects` is for concepts that primarily describe reality, systems, mechanisms, events, or formal relationships. `Ideologies` is for normative, philosophical, interpretive, religious, political, and value-dependent frameworks.
 
-The initial nodes are navigation and assessment starting points. None is marked known, and none has an understanding statement or children. The Ideologies root itself represents philosophy in the broad sense, so there is no separate Philosophy node.
+The initial nodes are navigation and assessment starting points. None is marked known, and none has an explanation, terms, or children. The Ideologies root itself represents philosophy in the broad sense, so there is no separate Philosophy node.
 
 ## What the base system does
 
 - Creates, edits, moves, and deletes conceptual nodes.
 - Records each node as unassessed, unknown, or known.
-- Requires a concise understanding statement for known nodes.
+- Requires one direct explanation of the topic's essence for known nodes.
+- Supports concise term definitions on known nodes.
 - Allows decomposition only beneath known nodes.
 - Prevents cycles, duplicate siblings, cross-branch parent conflicts, and invalid knowledge frontiers.
 - Adds simple undirected cross-connections without turning the tree into a graph.
@@ -70,7 +71,7 @@ npm start
 
 Use **Export** in the browser sidebar to save a complete, versioned JSON snapshot. Browsers with the native file-system picker let you select the filename and folder directly; other browsers use their standard download behavior.
 
-Use **Import** to select a previously exported JSON file. Import is a whole-database replacement: it preserves the exported node and connection IDs, revisions, timestamps, hierarchy, understandings, and application metadata while removing anything not present in the file. The file is fully validated first and the replacement is atomic, so an invalid or incompatible import leaves the current knowledge base unchanged.
+Use **Import** to select a previously exported JSON file. Import is a whole-database replacement: it preserves the exported node and connection IDs, revisions, timestamps, hierarchy, known-node explanations, local terms, and application metadata while removing anything not present in the file. The file is fully validated first and the replacement is atomic, so an invalid or incompatible import leaves the current knowledge base unchanged. Current exports use format version 3; older formats are intentionally unsupported.
 
 ## Test and verify
 
@@ -80,6 +81,18 @@ npm run check
 ```
 
 `npm run check` performs JavaScript syntax checks and runs the complete domain and HTTP test suite.
+
+## How Codex and GPT-5.6 were used
+
+### During development
+
+Epistome was developed with Codex using GPT-5.6 as a coding collaborator. Codex helped turn the product rules into the Node.js and SQLite implementation, browser interface, agent API, automated tests, and documentation. It was also used to inspect changes, run the repository checks, and refine behavior against the domain invariants in `AGENTS.md`. Product direction and decisions remained human-directed, while the checked-in code, tests, and documentation are the reviewable source of truth.
+
+### During use
+
+Codex with GPT-5.6 can also be used as an optional external agent for a running Epistome instance. It first reads the tool catalog, agent guide, and OpenAPI specification below, then uses the stateless HTTP operations to search for concepts, inspect explicit nodes, list eligible Subject frontiers, and establish or update knowledge with optimistic revisions.
+
+The model should help structure the user's own understanding rather than substitute its knowledge for theirs. Epistome enforces this boundary by limiting agent mutations: an agent cannot delete, rename, move, merge, or recategorize nodes, and it can add only name-only unassessed immediate children. Codex and GPT-5.6 are not bundled into the application, and running Epistome itself requires no OpenAI account, API key, or model dependency. Other compatible AI agents can use the same documented interface.
 
 ## AI agent discovery
 

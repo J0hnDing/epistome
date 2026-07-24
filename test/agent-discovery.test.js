@@ -49,6 +49,17 @@ describe("agent API discovery", () => {
     assert.match(establish.description, /children: \[\].*known leaf/i);
     assert.match(establish.input_schema.properties.children.description, /known parent/i);
     assert.match(establish.input_schema.properties.children.description, /known leaf/i);
+    assert.match(establish.description, /one direct explanation/i);
+    assert.equal(establish.input_schema.properties.description, undefined);
+    assert.equal(establish.input_schema.properties.terms.maxItems, 20);
+    assert.match(establish.input_schema.properties.terms.description, /must not duplicate children|never define an existing or proposed child/i);
+    assert.match(establish.input_schema.properties.terms.description, /narrower descendant/i);
+    assert.match(establish.input_schema.properties.children.description, /name-only/i);
+    assert.equal(establish.input_schema.properties.children.items.type, "string");
+    const update = catalog.tools.find((tool) => tool.name === "update_known_node");
+    assert.equal(update.input_schema.properties.description, undefined);
+    assert.equal(update.input_schema.properties.terms.maxItems, 20);
+    assert.equal(update.input_schema.properties.children_to_add.items.type, "string");
 
     const frontier = catalog.tools.find((tool) => tool.name === "list_frontier_nodes");
     assert.match(frontier.description, /Subjects tree only/i);
@@ -67,9 +78,14 @@ describe("agent API discovery", () => {
     assert.match(guide.structure.frontier.api_scope, /restricted to Subjects/i);
     assert.match(guide.structure.frontier.api_scope, /never returns Ideology/i);
     assert.match(guide.agent_workflow.state_model, /no global.*current_node/i);
+    assert.match(guide.terms.description, /known node/i);
+    assert.ok(guide.terms.rules.some((rule) => /never submit HTML/i.test(rule)));
+    assert.ok(guide.terms.rules.some((rule) => /child knowledge node/i.test(rule)));
+    assert.ok(guide.terms.rules.some((rule) => /do not define an immediate child.*proposed child/i.test(rule)));
+    assert.ok(guide.terms.rules.some((rule) => /child's own explanation/i.test(rule)));
 
     assert.match(guide.expansion_boundary.summary, /immediate children/i);
-    assert.match(guide.expansion_boundary.rule, /newly created child is unassessed/i);
+    assert.match(guide.expansion_boundary.rule, /newly created child is.*unassessed/i);
     assert.ok(guide.expansion_boundary.stop_when.some((rule) => /grandchildren/i.test(rule)));
     assert.ok(guide.expansion_boundary.stop_when.some((rule) => /exhaustive.*taxonomy/i.test(rule)));
     assert.ok(guide.expansion_boundary.stop_when.some((rule) => /empty child list/i.test(rule)));
@@ -109,7 +125,36 @@ describe("agent API discovery", () => {
     assert.match(establish.description, /children: \[\]/i);
     const childDescription = specification.components.schemas.EstablishKnownNodeInput
       .properties.children.description;
-    assert.match(childDescription, /newly created child is unassessed/i);
+    assert.match(childDescription, /newly created child is.*unassessed/i);
+    assert.equal(specification.components.schemas.NodeDescription, undefined);
+    assert.ok(specification.components.schemas.NodeTerm);
+    assert.equal(
+      specification.components.schemas.KnowledgeNode.properties.terms.$ref,
+      "#/components/schemas/NodeTerms"
+    );
+    assert.match(
+      specification.components.schemas.NodeTerms.description,
+      /must not duplicate children.*narrower descendants/i
+    );
+    assert.match(establish.description, /do not define an existing or proposed child/i);
+    assert.equal(
+      specification.components.schemas.GeneratedChildInput.type,
+      "string"
+    );
+    assert.equal(specification.components.schemas.KnowledgeNode.properties.description, undefined);
+    assert.equal(specification.components.schemas.MutationNode.properties.description, undefined);
+    assert.equal(
+      specification.components.schemas.MutationNode.properties.terms.$ref,
+      "#/components/schemas/NodeTerms"
+    );
+    assert.equal(
+      specification.components.schemas.EstablishKnownNodeInput.properties.description,
+      undefined
+    );
+    assert.equal(
+      specification.components.schemas.UpdateKnownNodeInput.properties.description,
+      undefined
+    );
 
     const frontier = specification.paths["/api/agent/list_frontier_nodes"].post;
     assert.match(frontier.description, /Subjects tree/i);

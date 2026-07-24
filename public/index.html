@@ -34,15 +34,21 @@
           </div>
           <button id="addNodeButton" class="icon-button" type="button" title="Add a concept" aria-label="Add a concept">+</button>
         </div>
+        <div class="tree-controls" aria-label="Tree display controls">
+          <button id="collapseAllButton" class="text-button" type="button">Collapse all</button>
+          <span aria-hidden="true">/</span>
+          <button id="expandAllButton" class="text-button" type="button">Expand all</button>
+        </div>
         <nav id="tree" class="tree" aria-label="Concepts"></nav>
-        <p class="tree-hint">Select a concept to inspect it. Unknown and unassessed nodes form the edge of the tree.</p>
+        <p class="tree-hint">Use the arrows to open the tree, then select a concept to inspect it. Unknown and unassessed nodes form the edge of the tree.</p>
         <section class="data-actions" aria-labelledby="dataActionsTitle">
           <p id="dataActionsTitle" class="section-label">Your data</p>
           <div>
             <button id="exportButton" class="secondary-button" type="button">Export</button>
             <button id="importButton" class="secondary-button" type="button">Import</button>
           </div>
-          <p>Export a complete JSON backup. Import replaces the entire current knowledge base.</p>
+          <button id="clearKnowledgeButton" class="danger-button" type="button">Clear knowledge</button>
+          <p>Export a complete JSON backup. Import replaces everything. Clear knowledge restores the base taxonomy.</p>
           <input id="importFileInput" type="file" accept="application/json,.json" hidden>
         </section>
       </aside>
@@ -75,9 +81,17 @@
             </div>
             <span id="nodeStatus" class="status-badge"></span>
           </div>
-          <div class="understanding-block">
-            <p class="section-label">Current understanding</p>
-            <p id="nodeUnderstanding" class="understanding"></p>
+          <div id="nodeContent" hidden>
+            <div class="explanation-block">
+              <p class="section-label">Explanation</p>
+              <div id="nodeExplanation" class="explanation"></div>
+            </div>
+            <section class="terms-block" aria-labelledby="nodeTermsTitle">
+              <p id="nodeTermsTitle" class="section-label">Terms</p>
+              <p class="section-note">Definitions from this concept and its ancestors.</p>
+              <p id="nodeTermsEmpty" class="empty-copy" hidden>No terms have been defined along this path yet.</p>
+              <dl id="nodeTerms" class="term-list"></dl>
+            </section>
           </div>
           <div class="detail-grid">
             <section>
@@ -140,8 +154,8 @@
           </select>
         </label>
         <label id="understandingField" hidden>
-          <span>Understanding <small>Explain the central idea in your own words.</small></span>
-          <textarea id="understandingInput" name="understanding" maxlength="2000" rows="6" placeholder="What is the main mechanism, purpose, relationship, or trade-off?"></textarea>
+          <span>Explanation <small>State the topic's essence directly, in your own words.</small></span>
+          <textarea id="understandingInput" name="understanding" maxlength="2000" rows="6" placeholder="Explain the central idea, mechanism, relationship, or trade-off."></textarea>
         </label>
         <p id="nodeFormError" class="form-error" role="alert" hidden></p>
         <div class="dialog-actions">

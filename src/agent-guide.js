@@ -1,6 +1,6 @@
 export const EXPANSION_BOUNDARY = Object.freeze({
   summary: "Expansion stops at the requested node's immediate children.",
-  rule: "Add only immediate children that are major conceptual subdivisions through which the user currently organizes the known parent. Every newly created child is unassessed and remains a leaf until a later, explicit establish_known_node call marks that child known.",
+  rule: "Add only immediate children that are major conceptual subdivisions through which the user currently organizes the known parent. Every newly created child is a name-only unassessed leaf with no explanation or terms until a later, explicit establish_known_node call marks that child known.",
   include_when: [
     "the child is a subfield, type, major component, narrower question, or specific position within the parent",
     "the subdivision clarifies the user's understanding or exposes a useful knowledge frontier",
@@ -26,7 +26,8 @@ export const AGENT_GUIDE = Object.freeze({
     represents: [
       "which broad areas the user understands",
       "how known concepts divide into narrower concepts",
-      "the user's concise understanding of each known concept",
+      "one direct explanation of each known concept's essence",
+      "optional concise terms defined only on known nodes",
       "confirmed unknown boundaries and unassessed areas"
     ],
     does_not_represent: [
@@ -54,7 +55,7 @@ export const AGENT_GUIDE = Object.freeze({
     }
   },
   understanding_statement: {
-    rule: "Capture the user's concise conceptual model, not a copied definition or isolated fact.",
+    rule: "Capture one direct explanation of the concept's essence, not metacommentary such as 'I understand', a copied definition, or an isolated fact.",
     prioritize: [
       "central mechanism",
       "main purpose or relationship",
@@ -63,22 +64,35 @@ export const AGENT_GUIDE = Object.freeze({
       "defining assumption or distinction"
     ]
   },
+  terms: {
+    description: "A known node may define a small glossary of concise terms needed to read its explanation. Unknown and unassessed nodes never contain terms.",
+    rules: [
+      "Use a local term only for vocabulary needed to understand the current node.",
+      "A term must be owned by the current node: do not define an immediate child, a proposed child, or vocabulary whose explanation belongs to a narrower descendant.",
+      "If a concept is or should become a child, omit it from the parent's terms; after that child is explicitly established as known, define only vocabulary central to that child's own explanation.",
+      "Every term has a stable local id, display label, and concise definition.",
+      "Never submit HTML in an explanation, label, or definition.",
+      "Use a child knowledge node instead when a concept needs independent exploration, children, or substantial explanation.",
+      "Do not use terms as a second child list, topic outline, or exhaustive glossary."
+    ]
+  },
   expansion_boundary: EXPANSION_BOUNDARY,
   agent_workflow: {
     state_model: "Stateless. There is no global or session current_node. Pass explicit node IDs on every read and mutation.",
     steps: [
       "Call list_frontier_nodes to discover unknown or unassessed assessment targets whose immediate parent is known. This operation is restricted to the Subjects tree.",
       "Call search_knowledge with an explicit query and optional branch or parent subtree scope.",
-      "Call get_knowledge_node with a returned node ID to inspect its latest revision, understanding, parent, and immediate children.",
-      "Use establish_known_node when an unknown or unassessed node has become known; apply the expansion boundary to its immediate children.",
-      "Use update_known_node only for an already known node; update its understanding and optionally add immediate unassessed children.",
+      "Call get_knowledge_node with a returned node ID to inspect its latest revision, known-node explanation, local terms, parent, and immediate children.",
+      "Use establish_known_node when an unknown or unassessed node has become known; write one direct explanation, optionally define terms on that now-known node, and add only name-only unassessed children.",
+      "Use update_known_node only for an already known node; update its single explanation and optional local terms, and add only name-only immediate unassessed children.",
       "If a mutation returns stale_revision, discard the stale proposal, read the node again, and reconsider the change against the new state."
     ]
   },
   mutation_limits: [
     "Agent mutations cannot delete, rename, move, merge, or recategorize nodes.",
     "Existing children are reused by case-insensitive name and are never deleted or replaced.",
-    "All understanding and child changes in one agent mutation are atomic.",
+    "All explanation, term, and child changes in one agent mutation are atomic.",
+    "Unknown and unassessed nodes contain no explanation or terms.",
     "Unknown and unassessed nodes cannot have children; known descendants cannot exist beneath them."
   ],
   resources: {

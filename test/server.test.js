@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { createApp } from "../src/server.js";
+import { KNOWLEDGE_EXPORT_VERSION } from "../src/knowledge-base.js";
 
 let app;
 let baseUrl;
@@ -43,12 +44,21 @@ describe("HTTP application", () => {
         name: "Computer Science",
         branch: "subjects",
         status: "known",
-        understanding: "Computer science studies computation, information, and the systems that operate on them."
+        understanding: "Computer science studies computation, information, and the systems that operate on them.",
+        terms: [{
+          id: "algorithms",
+          label: "algorithms",
+          definition: "Finite procedures for carrying out computations."
+        }]
       })
     });
     assert.equal(created.response.status, 201);
+    assert.equal(created.body.node.terms[0].id, "algorithms");
 
     const id = created.body.node.id;
+    const read = await request(`/api/nodes/${id}`);
+    assert.equal("description" in read.body.node, false);
+    assert.deepEqual(read.body.node.terms, created.body.node.terms);
     const updated = await request(`/api/nodes/${id}`, {
       method: "PATCH",
       body: JSON.stringify({ name: "Computing" })
@@ -89,7 +99,7 @@ describe("HTTP application", () => {
     const exported = await request("/api/export");
     assert.equal(exported.response.status, 200);
     assert.equal(exported.body.format, "epistome");
-    assert.equal(exported.body.format_version, 1);
+    assert.equal(exported.body.format_version, KNOWLEDGE_EXPORT_VERSION);
 
     app.knowledgeBase.createNode({ name: "Temporary", branch: "subjects", status: "unassessed" });
     const imported = await request("/api/import", {
@@ -98,7 +108,7 @@ describe("HTTP application", () => {
     });
     assert.equal(imported.response.status, 200);
     assert.deepEqual(imported.body.imported, {
-      format_version: 1,
+      format_version: KNOWLEDGE_EXPORT_VERSION,
       nodes_imported: 2,
       connections_imported: 1
     });
@@ -106,5 +116,33 @@ describe("HTTP application", () => {
     const nodes = await request("/api/nodes");
     assert.deepEqual(nodes.body.nodes.map((node) => node.name), ["Metaphysics", "Physics"]);
     assert.equal(app.knowledgeBase.getNode(first.id).connections[0].node.id, second.id);
+  });
+
+  test("clears knowledge through the browser API and retains the base taxonomy", async () => {
+    const physics = app.knowledgeBase.createNode({
+      name: "Physics",
+      branch: "subjects",
+      status: "known",
+      understanding: "Physics models matter, energy, motion, and their interactions."
+    });
+    app.knowledgeBase.createNode({
+      name: "Mechanics",
+      branch: "subjects",
+      parentId: physics.id,
+      status: "unassessed"
+    });
+
+    const cleared = await request("/api/clear", { method: "POST" });
+    assert.equal(cleared.response.status, 200);
+    assert.equal(cleared.body.cleared.nodes_deleted, 1);
+    assert.equal(cleared.body.cleared.base_nodes_preserved, 1);
+    assert.equal(cleared.body.cleared.base_nodes_reset, 1);
+    assert.equal(cleared.body.cleared.base_nodes_created, 49);
+
+    const nodes = await request("/api/nodes");
+    assert.equal(nodes.body.nodes.length, 50);
+    assert.ok(nodes.body.nodes.every((node) => node.parentId === null));
+    assert.ok(nodes.body.nodes.every((node) => node.status === "unassessed"));
+    assert.equal(nodes.body.nodes.find((node) => node.name === "Physics").id, physics.id);
   });
 });

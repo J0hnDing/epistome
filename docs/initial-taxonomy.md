@@ -2,11 +2,13 @@
 
 ## Purpose
 
-The initial taxonomy provides broad navigation and assessment starting points. Every node is inserted directly beneath Subjects or Ideologies with status `unassessed`, no understanding statement, and no children.
+The initial taxonomy provides broad navigation and assessment starting points. Every node is inserted directly beneath Subjects or Ideologies with status `unassessed`, no explanation, terms, or children.
 
 This is not a claim that the user understands the concepts, nor is it an exhaustive ontology. Deeper structure should appear only after the user establishes a broad node as known and chooses useful immediate subdivisions.
 
 The seed runs once. Existing matching nodes are preserved, and later user deletions or reorganizations are not undone.
+
+The explicit **Clear knowledge** action is the exception to one-time seeding: it deliberately restores this complete taxonomy, resets its nodes to pristine unassessed leaves, and removes all other concepts and connections.
 
 ## Subjects
 
