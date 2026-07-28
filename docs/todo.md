@@ -2,6 +2,7 @@
 
 - Status: planned
 - Priority: medium
+- Category: feature
 - Area: agent-domain
 - Dependencies: TODO-003, TODO-012
 - Rationale: Human-facing APIs can rename and move nodes, but agents are intentionally prohibited from restructuring. Any future agent reorganization surface needs explicit operation semantics, complete invariant previews, and revision-safe atomic changes rather than a generic patch endpoint.
@@ -13,6 +14,7 @@ Define separate previewable contracts for rename, move, merge, and split; requir
 
 - Status: planned
 - Priority: medium
+- Category: feature
 - Area: audit-persistence
 - Dependencies: TODO-006
 - Rationale: Revisions provide concurrency control but do not explain who changed the tree, which operation caused a mutation, or what prior state was replaced. Destructive and multi-node agent capabilities should not expand without a durable audit foundation.
@@ -24,6 +26,7 @@ Record every agent call and tree mutation in append-only history with operation,
 
 - Status: planned
 - Priority: medium
+- Category: refactor
 - Area: api-contract
 - Dependencies: none
 - Rationale: The server has a stable error envelope and OpenAPI error schema, but public error codes, details, retry meaning, and remediation remain distributed across implementation, tests, and prose.
@@ -35,6 +38,7 @@ Create one authoritative registry for every public REST and agent error code, in
 
 - Status: planned
 - Priority: low
+- Category: feature
 - Area: integrations
 - Dependencies: TODO-003, TODO-012
 - Rationale: MCP support is useful only as a compatibility layer over the mature REST agent contract. Implementing it before contract metadata and errors are single-sourced would create a second schema and behavior authority.
@@ -46,6 +50,7 @@ Map MCP tools directly to existing agent REST operations; derive names, descript
 
 - Status: planned
 - Priority: medium
+- Category: feature
 - Area: agent-api
 - Dependencies: TODO-002, TODO-003, TODO-012
 - Rationale: Complete export and atomic replacement already exist for the browser, but exposing them to agents crosses the normal bounded-read policy and introduces a destructive whole-database operation requiring explicit authorization and auditability.
@@ -57,6 +62,7 @@ Define separate read-only export and destructive import operations; require expl
 
 - Status: planned
 - Priority: medium
+- Category: refactor
 - Area: persistence
 - Dependencies: none
 - Rationale: Database evolution currently relies on one-off column inspection. As schema changes accumulate, ordering, rollback, and compatibility become harder to reason about and test.
@@ -68,6 +74,7 @@ Store an explicit schema version; apply each migration exactly once in a transac
 
 - Status: planned
 - Priority: high
+- Category: bugfix
 - Area: http-boundary
 - Dependencies: none
 - Rationale: The request reader currently coerces each byte chunk to text independently. A multibyte character split across chunks is silently replaced, corrupting names, understandings, and imported snapshots.
@@ -79,6 +86,7 @@ Accumulate bounded request bytes and decode UTF-8 once; reject oversized Content
 
 - Status: planned
 - Priority: high
+- Category: bugfix
 - Area: domain-persistence
 - Dependencies: TODO-006
 - Rationale: SQLite lower(name) and JavaScript locale lowercasing disagree outside ASCII. The database can accept sibling names that the export validator treats as duplicates, making an Epistome export impossible to re-import.
@@ -90,6 +98,7 @@ Define one documented normalization and case-folding function; persist and uniqu
 
 - Status: planned
 - Priority: medium
+- Category: bugfix
 - Area: domain-api
 - Dependencies: none
 - Rationale: Human-facing node writes accept malformed or unsupported command shapes inconsistently. PATCH null becomes a 500 and an empty or semantically unchanged patch advances the revision despite no conceptual change.
@@ -101,6 +110,7 @@ Require plain-object command bodies; reject unsupported fields with stable 400 e
 
 - Status: planned
 - Priority: low
+- Category: refactor
 - Area: knowledge-transfer
 - Dependencies: none
 - Rationale: Recursive import validation and tree assembly depend on the JavaScript call stack. A structurally valid deep snapshot within the import size limit can raise RangeError instead of receiving deterministic validation or import behavior.
@@ -112,6 +122,7 @@ Replace depth-dependent recursive traversal in import ordering and server-side t
 
 - Status: planned
 - Priority: medium
+- Category: refactor
 - Area: architecture
 - Dependencies: none
 - Rationale: KnowledgeBase currently combines tree mutations, agent queries, export validation, and snapshot replacement in one large implementation. Transfer rules form a cohesive boundary that can be isolated without weakening domain ownership.
@@ -123,6 +134,7 @@ Keep KnowledgeBase as the authoritative domain facade; extract pure snapshot par
 
 - Status: planned
 - Priority: medium
+- Category: refactor
 - Area: agent-api
 - Dependencies: TODO-003
 - Rationale: Agent tool schemas, OpenAPI schemas, route paths, and descriptions are maintained separately. Existing tests check selected alignment but do not prevent all semantic drift.
@@ -134,6 +146,7 @@ Define one operation registry for names, methods, paths, input schemas, and shar
 
 - Status: planned
 - Priority: low
+- Category: refactor
 - Area: browser
 - Dependencies: none
 - Rationale: Each browser refresh downloads both the complete nested tree and a complete flat node list. The duplicated full reads add database work, transfer cost, and a potential consistency seam as the knowledge base grows.
