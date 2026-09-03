@@ -1,0 +1,5 @@
+# Startup
+
+```powershell
+npm start
+```

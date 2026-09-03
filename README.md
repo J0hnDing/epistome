@@ -1,5 +1,7 @@
 # Epistome
 
+> Epistome has been merged into Eidolon-Atlas and is no longer maintained. New development continues in Eidolon-Atlas.
+
 Epistome is a local, personal map of conceptual understanding. It organizes knowledge as a readable tree, shows where understanding ends, and keeps optional cross-connections secondary to the main hierarchy.
 
 A fresh installation starts with two structural containers and a curated set of broad, unassessed concepts:
